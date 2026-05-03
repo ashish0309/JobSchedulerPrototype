@@ -15,4 +15,11 @@ public sealed class InMemoryJobStore : IJobStore
     {
         return _jobs.GetValueOrDefault(id);
     }
+
+    public IReadOnlyCollection<JobRecord> List()
+    {
+        return _jobs.Values
+            .OrderBy(job => job.EnqueuedAt)
+            .ToArray();
+    }
 }

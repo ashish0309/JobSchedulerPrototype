@@ -17,6 +17,7 @@ public static class JobsApi
         var group = endpoints.MapGroup("/api/jobs");
 
         group.MapPost("", EnqueueJob);
+        group.MapGet("", ListJobs);
         group.MapGet("/{id:guid}", GetJob);
 
         return group;
@@ -43,6 +44,15 @@ public static class JobsApi
 
         var response = ToResponse(job);
         return TypedResults.Accepted(response.StatusUrl, response);
+    }
+
+    private static Ok<IReadOnlyCollection<JobResponse>> ListJobs(IJobStore jobs)
+    {
+        IReadOnlyCollection<JobResponse> response = jobs.List()
+            .Select(ToResponse)
+            .ToArray();
+
+        return TypedResults.Ok(response);
     }
 
     private static Results<Ok<JobResponse>, NotFound> GetJob(
