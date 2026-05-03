@@ -22,4 +22,40 @@ public sealed class InMemoryJobStore : IJobStore
             .OrderBy(job => job.EnqueuedAt)
             .ToArray();
     }
+
+    public JobRecord? TryClaimNextQueuedJob()
+    {
+        var queuedJobs = _jobs.Values
+            .Where(job => job.Status == JobStatus.Queued)
+            .OrderBy(job => job.EnqueuedAt);
+
+        foreach (var job in queuedJobs)
+        {
+            var runningJob = job with { Status = JobStatus.Running };
+            if (_jobs.TryUpdate(job.Id, runningJob, job))
+            {
+                return runningJob;
+            }
+        }
+
+        return null;
+    }
+
+    public bool MarkCompleted(Guid id)
+    {
+        while (_jobs.TryGetValue(id, out var job))
+        {
+            if (job.Status != JobStatus.Running)
+            {
+                return false;
+            }
+            var completedJob = job with { Status = JobStatus.Completed };
+            if (_jobs.TryUpdate(id, completedJob, job))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

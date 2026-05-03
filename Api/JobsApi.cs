@@ -6,7 +6,6 @@ namespace JobSchedulerPrototype.Api;
 
 public static class JobsApi
 {
-    private const string QueuedStatus = "Queued";
     private static readonly HashSet<string> SupportedJobTypes = new(StringComparer.Ordinal)
     {
         "send-welcome-email"
@@ -37,7 +36,7 @@ public static class JobsApi
             Guid.NewGuid(),
             request.Type,
             request.Payload.Clone(),
-            QueuedStatus,
+            JobStatus.Queued,
             DateTimeOffset.UtcNow);
 
         jobs.Add(job);
@@ -91,7 +90,7 @@ public static class JobsApi
         return new JobResponse(
             job.Id,
             job.Type,
-            job.Status,
+            job.Status.ToString(),
             job.EnqueuedAt,
             $"/api/jobs/{job.Id}");
     }

@@ -6,5 +6,5 @@ public sealed record JobRecord(
     Guid Id,
     string Type,
     JsonElement Payload,
-    string Status,
+    JobStatus Status,
     DateTimeOffset EnqueuedAt);

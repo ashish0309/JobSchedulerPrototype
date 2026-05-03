@@ -7,4 +7,8 @@ public interface IJobStore
     JobRecord? Get(Guid id);
 
     IReadOnlyCollection<JobRecord> List();
+
+    JobRecord? TryClaimNextQueuedJob();
+
+    bool MarkCompleted(Guid id);
 }
