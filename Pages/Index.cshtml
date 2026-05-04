@@ -1,10 +1,83 @@
-﻿@page
+@page
+@using JobSchedulerPrototype.Jobs
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Jobs";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="monitor-header">
+    <div>
+        <h1>Jobs</h1>
+        <p>Current in-memory job activity.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/api/jobs">API</a>
+</section>
+
+<section class="status-summary" aria-label="Job status summary">
+    <div class="status-tile">
+        <span>Queued</span>
+        <strong>@Model.QueuedCount</strong>
+    </div>
+    <div class="status-tile">
+        <span>Running</span>
+        <strong>@Model.RunningCount</strong>
+    </div>
+    <div class="status-tile">
+        <span>Completed</span>
+        <strong>@Model.CompletedCount</strong>
+    </div>
+    <div class="status-tile">
+        <span>Failed</span>
+        <strong>@Model.FailedCount</strong>
+    </div>
+</section>
+
+@if (Model.Jobs.Count == 0)
+{
+    <section class="empty-state">
+        <h2>No jobs yet</h2>
+        <p>Enqueue jobs with <code>requests/jobs.http</code>, then refresh this page.</p>
+    </section>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table job-table align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Job</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Enqueued</th>
+                    <th scope="col">Failure</th>
+                    <th scope="col">API</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var job in Model.Jobs)
+                {
+                    <tr>
+                        <td>
+                            <div class="job-type">@job.Type</div>
+                            <div class="job-id">@job.Id</div>
+                        </td>
+                        <td>
+                            <span class="status-badge status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span>
+                        </td>
+                        <td>@job.EnqueuedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz")</td>
+                        <td>
+                            @if (job.Status == JobStatus.Failed)
+                            {
+                                <span>@job.FailureReason</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">None</span>
+                            }
+                        </td>
+                        <td><a href="@job.StatusUrl">@job.StatusUrl</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

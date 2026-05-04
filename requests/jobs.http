@@ -12,6 +12,45 @@ Content-Type: application/json
   }
 }
 
+### Enqueue a billing receipt job sample
+POST {{baseUrl}}/api/jobs
+Content-Type: application/json
+
+{
+  "type": "send-welcome-email",
+  "payload": {
+    "userId": "user_456",
+    "email": "billing@example.com",
+    "template": "receipt-ready"
+  }
+}
+
+### Enqueue a trial reminder job sample
+POST {{baseUrl}}/api/jobs
+Content-Type: application/json
+
+{
+  "type": "send-welcome-email",
+  "payload": {
+    "userId": "user_789",
+    "email": "trial@example.com",
+    "template": "trial-ending"
+  }
+}
+
+### Enqueue an onboarding nudge job sample
+POST {{baseUrl}}/api/jobs
+Content-Type: application/json
+
+{
+  "type": "send-welcome-email",
+  "payload": {
+    "userId": "user_abc",
+    "email": "onboarding@example.com",
+    "template": "finish-profile"
+  }
+}
+
 ### List jobs
 GET {{baseUrl}}/api/jobs
 
