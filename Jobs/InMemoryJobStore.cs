@@ -59,4 +59,28 @@ public sealed class InMemoryJobStore : IJobStore
 
         return false;
     }
+
+    public bool MarkFailed(Guid id, string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return false;
+        }
+
+        while (_jobs.TryGetValue(id, out var job))
+        {
+            if (job.Status != JobStatus.Running)
+            {
+                return false;
+            }
+
+            var failedJob = job.TransitionToFailed(reason, DateTimeOffset.UtcNow);
+            if (_jobs.TryUpdate(id, failedJob, job))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

@@ -11,4 +11,6 @@ public interface IJobStore
     JobRecord? TryClaimNextQueuedJob();
 
     bool MarkCompleted(Guid id);
+
+    bool MarkFailed(Guid id, string reason);
 }

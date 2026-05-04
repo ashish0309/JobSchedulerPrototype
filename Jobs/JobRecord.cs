@@ -8,6 +8,7 @@ public sealed record JobRecord
     public string Type { get; private init; }
     public JsonElement Payload { get; private init; }
     public JobStatus Status { get; private init; }
+    public string? FailureReason { get; private init; }
     public IReadOnlyList<JobStateChange> History { get; private init; }
 
     public DateTimeOffset EnqueuedAt => History[0].ChangedAt;
@@ -17,12 +18,14 @@ public sealed record JobRecord
         string type,
         JsonElement payload,
         JobStatus status,
+        string? failureReason,
         IReadOnlyList<JobStateChange> history)
     {
         Id = id;
         Type = type;
         Payload = payload;
         Status = status;
+        FailureReason = failureReason;
         History = history;
     }
 
@@ -37,6 +40,7 @@ public sealed record JobRecord
             type,
             payload,
             JobStatus.Queued,
+            failureReason: null,
             [new JobStateChange(JobStatus.Queued, enqueuedAt)]);
     }
 
@@ -46,6 +50,16 @@ public sealed record JobRecord
         {
             Status = nextStatus,
             History = [.. History, new JobStateChange(nextStatus, changedAt)]
+        };
+    }
+
+    public JobRecord TransitionToFailed(string reason, DateTimeOffset changedAt)
+    {
+        return this with
+        {
+            Status = JobStatus.Failed,
+            FailureReason = reason,
+            History = [.. History, new JobStateChange(JobStatus.Failed, changedAt)]
         };
     }
 

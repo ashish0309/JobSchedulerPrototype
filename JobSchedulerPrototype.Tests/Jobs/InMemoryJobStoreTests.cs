@@ -85,6 +85,53 @@ public sealed class InMemoryJobStoreTests
         Assert.False(completed);
     }
 
+    [Fact]
+    public void MarkFailedOnlyFailsRunningJobs()
+    {
+        var store = new InMemoryJobStore();
+        var job = CreateJob();
+        store.Add(job);
+
+        var queuedFailure = store.MarkFailed(job.Id, "SMTP server unavailable.");
+        var runningJob = store.TryClaimNextQueuedJob();
+        var runningFailure = store.MarkFailed(job.Id, "SMTP server unavailable.");
+        var failedJob = store.Get(job.Id);
+
+        Assert.False(queuedFailure);
+        Assert.NotNull(runningJob);
+        Assert.True(runningFailure);
+        Assert.NotNull(failedJob);
+        Assert.Equal(JobStatus.Failed, failedJob.Status);
+        Assert.Equal("SMTP server unavailable.", failedJob.FailureReason);
+        Assert.Equal(
+            [JobStatus.Queued, JobStatus.Running, JobStatus.Failed],
+            failedJob.History.Select(change => change.Status));
+    }
+
+    [Fact]
+    public void MarkFailedReturnsFalseWhenReasonIsBlank()
+    {
+        var store = new InMemoryJobStore();
+        var job = CreateJob();
+        store.Add(job);
+        store.TryClaimNextQueuedJob();
+
+        var failed = store.MarkFailed(job.Id, "");
+
+        Assert.False(failed);
+        Assert.Equal(JobStatus.Running, store.Get(job.Id)?.Status);
+    }
+
+    [Fact]
+    public void MarkFailedReturnsFalseWhenJobDoesNotExist()
+    {
+        var store = new InMemoryJobStore();
+
+        var failed = store.MarkFailed(Guid.NewGuid(), "SMTP server unavailable.");
+
+        Assert.False(failed);
+    }
+
     private static JobRecord CreateJob(DateTimeOffset? enqueuedAt = null)
     {
         return JobRecord.Enqueue(

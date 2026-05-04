@@ -90,6 +90,7 @@ public static class JobsApi
             job.Id,
             job.Type,
             job.Status.ToString(),
+            job.FailureReason,
             job.EnqueuedAt,
             $"/api/jobs/{job.Id}");
     }
@@ -103,6 +104,7 @@ public sealed record JobResponse(
     Guid Id,
     string Type,
     string Status,
+    string? FailureReason,
     DateTimeOffset EnqueuedAt,
     string StatusUrl);
 

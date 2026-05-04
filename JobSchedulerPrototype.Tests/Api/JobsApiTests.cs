@@ -36,6 +36,7 @@ public sealed class JobsApiTests
         Assert.NotEqual(Guid.Empty, body.Id);
         Assert.Equal("send-welcome-email", body.Type);
         Assert.Equal("Queued", body.Status);
+        Assert.Null(body.FailureReason);
         Assert.Equal($"/api/jobs/{body.Id}", body.StatusUrl);
         Assert.Equal(new Uri(body.StatusUrl, UriKind.Relative), response.Headers.Location);
     }
@@ -67,6 +68,7 @@ public sealed class JobsApiTests
         Assert.Equal(postedJob.Id, job.Id);
         Assert.Equal("send-welcome-email", job.Type);
         Assert.Equal("Queued", job.Status);
+        Assert.Null(job.FailureReason);
         Assert.Equal($"/api/jobs/{postedJob.Id}", job.StatusUrl);
     }
 
@@ -95,6 +97,35 @@ public sealed class JobsApiTests
         Assert.NotNull(job);
         Assert.Equal(postedJob.Id, job.Id);
         Assert.Equal(postedJob.StatusUrl, job.StatusUrl);
+    }
+
+    [Fact]
+    public async Task GetJobReturnsFailureReasonWhenJobFailed()
+    {
+        var jobId = Guid.NewGuid();
+        await using var factory = new JobsApiFactory(store =>
+        {
+            var job = JobRecord.Enqueue(
+                jobId,
+                "send-welcome-email",
+                Payload(),
+                new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero));
+
+            store.Add(job);
+            store.TryClaimNextQueuedJob();
+            store.MarkFailed(jobId, "SMTP server unavailable.");
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/jobs/{jobId}");
+
+        response.EnsureSuccessStatusCode();
+        var job = await response.Content.ReadFromJsonAsync<JobResponse>();
+
+        Assert.NotNull(job);
+        Assert.Equal(jobId, job.Id);
+        Assert.Equal("Failed", job.Status);
+        Assert.Equal("SMTP server unavailable.", job.FailureReason);
     }
 
     [Fact]
@@ -154,15 +185,33 @@ public sealed class JobsApiTests
         };
     }
 
+    private static JsonElement Payload()
+    {
+        using var document = JsonDocument.Parse("""{"userId":"user_123"}""");
+        return document.RootElement.Clone();
+    }
+
     private sealed class JobsApiFactory : WebApplicationFactory<Program>
     {
+        private readonly Action<IJobStore>? _configureStore;
+
+        public JobsApiFactory(Action<IJobStore>? configureStore = null)
+        {
+            _configureStore = configureStore;
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IHostedService>();
                 services.RemoveAll<IJobStore>();
-                services.AddSingleton<IJobStore, InMemoryJobStore>();
+                services.AddSingleton<IJobStore>(_ =>
+                {
+                    var store = new InMemoryJobStore();
+                    _configureStore?.Invoke(store);
+                    return store;
+                });
             });
         }
     }
