@@ -31,7 +31,7 @@ public sealed class InMemoryJobStore : IJobStore
 
         foreach (var job in queuedJobs)
         {
-            var runningJob = job with { Status = JobStatus.Running };
+            var runningJob = job.TransitionTo(JobStatus.Running, DateTimeOffset.UtcNow);
             if (_jobs.TryUpdate(job.Id, runningJob, job))
             {
                 return runningJob;
@@ -49,7 +49,8 @@ public sealed class InMemoryJobStore : IJobStore
             {
                 return false;
             }
-            var completedJob = job with { Status = JobStatus.Completed };
+
+            var completedJob = job.TransitionTo(JobStatus.Completed, DateTimeOffset.UtcNow);
             if (_jobs.TryUpdate(id, completedJob, job))
             {
                 return true;

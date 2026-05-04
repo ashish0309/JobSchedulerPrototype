@@ -32,11 +32,10 @@ public static class JobsApi
             return TypedResults.BadRequest(validationError);
         }
 
-        var job = new JobRecord(
+        var job = JobRecord.Enqueue(
             Guid.NewGuid(),
             request.Type,
             request.Payload.Clone(),
-            JobStatus.Queued,
             DateTimeOffset.UtcNow);
 
         jobs.Add(job);
