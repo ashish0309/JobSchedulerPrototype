@@ -42,7 +42,6 @@ public sealed record JobSummary(
     DateTimeOffset? FailedAt,
     int AttemptCount,
     int MaxAttempts,
-    bool RetryAvailable,
     IReadOnlyList<JobStateChangeSummary> History,
     string StatusUrl,
     string? FailureReason)
@@ -61,7 +60,6 @@ public sealed record JobSummary(
             job.FailedAt,
             job.AttemptCount,
             job.MaxAttempts,
-            job.RetryAvailable,
             job.History.Select(JobStateChangeSummary.From).ToArray(),
             $"/api/jobs/{job.Id}",
             job.FailureReason);

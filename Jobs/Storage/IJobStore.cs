@@ -14,5 +14,5 @@ public interface IJobStore
 
     bool MarkFailed(Guid id, string reason);
 
-    bool Retry(Guid id);
+    bool ScheduleRetry(Guid id, string reason, DateTimeOffset scheduledAt);
 }

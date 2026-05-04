@@ -70,10 +70,6 @@ else
                         </td>
                         <td>
                             @job.AttemptCount of @job.MaxAttempts
-                            @if (job.RetryAvailable)
-                            {
-                                <span class="text-muted">Retry available</span>
-                            }
                         </td>
                         <td>@FormatTimestamp(job.ScheduledAt)</td>
                         <td>@job.EnqueuedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz")</td>

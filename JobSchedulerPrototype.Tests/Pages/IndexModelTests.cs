@@ -42,7 +42,6 @@ public sealed class IndexModelTests
         Assert.NotNull(failedSummary.FailedAt);
         Assert.Equal(1, failedSummary.AttemptCount);
         Assert.Equal(3, failedSummary.MaxAttempts);
-        Assert.True(failedSummary.RetryAvailable);
         Assert.Equal(3, failedSummary.History.Count);
         Assert.Equal(failedSummary.CurrentStateChangeId, failedSummary.History[^1].Id);
         Assert.Equal(JobStatus.Failed, failedSummary.History[^1].Status);
@@ -55,7 +54,6 @@ public sealed class IndexModelTests
         Assert.Null(queuedSummary.FailedAt);
         Assert.Equal(0, queuedSummary.AttemptCount);
         Assert.Equal(3, queuedSummary.MaxAttempts);
-        Assert.False(queuedSummary.RetryAvailable);
         var queuedStateChange = Assert.Single(queuedSummary.History);
         Assert.Equal(queuedSummary.CurrentStateChangeId, queuedStateChange.Id);
         Assert.Equal(JobStatus.Queued, queuedStateChange.Status);
@@ -68,7 +66,6 @@ public sealed class IndexModelTests
         Assert.Null(completedSummary.FailedAt);
         Assert.Equal(1, completedSummary.AttemptCount);
         Assert.Equal(3, completedSummary.MaxAttempts);
-        Assert.False(completedSummary.RetryAvailable);
         Assert.Equal(3, completedSummary.History.Count);
         Assert.Equal(completedSummary.CurrentStateChangeId, completedSummary.History[^1].Id);
         Assert.Equal(JobStatus.Completed, completedSummary.History[^1].Status);

@@ -109,16 +109,23 @@ public sealed class InMemoryJobStore : IJobStore
         }
     }
 
-    public bool Retry(Guid id)
+    public bool ScheduleRetry(Guid id, string reason, DateTimeOffset scheduledAt)
     {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return false;
+        }
+
         lock (_lock)
         {
-            if (!_jobsById.TryGetValue(id, out var job) || !job.RetryAvailable)
+            if (!_jobsById.TryGetValue(id, out var job)
+                || job.Status != JobStatus.Running
+                || job.AttemptCount >= job.MaxAttempts)
             {
                 return false;
             }
 
-            var retriedJob = job.Retry(DateTimeOffset.UtcNow);
+            var retriedJob = job.ScheduleRetry(reason, DateTimeOffset.UtcNow, scheduledAt);
             _jobsById[id] = retriedJob;
             AddPendingJobUnderLock(retriedJob, DateTimeOffset.UtcNow);
             return true;

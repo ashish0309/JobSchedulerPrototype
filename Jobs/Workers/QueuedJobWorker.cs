@@ -7,22 +7,28 @@ public sealed class QueuedJobWorker : BackgroundService
 
     private readonly IJobStore _jobs;
     private readonly IJobDispatcher _dispatcher;
+    private readonly IJobDefinitionRegistry _definitions;
     private readonly TimeSpan _pollInterval;
     private readonly TimeSpan _simulatedWorkDuration;
 
-    public QueuedJobWorker(IJobStore jobs, IJobDispatcher dispatcher)
-        : this(jobs, dispatcher, PollInterval, SimulatedWorkDuration)
+    public QueuedJobWorker(
+        IJobStore jobs,
+        IJobDispatcher dispatcher,
+        IJobDefinitionRegistry definitions)
+        : this(jobs, dispatcher, definitions, PollInterval, SimulatedWorkDuration)
     {
     }
 
     public QueuedJobWorker(
         IJobStore jobs,
         IJobDispatcher dispatcher,
+        IJobDefinitionRegistry definitions,
         TimeSpan pollInterval,
         TimeSpan simulatedWorkDuration)
     {
         _jobs = jobs;
         _dispatcher = dispatcher;
+        _definitions = definitions;
         _pollInterval = pollInterval;
         _simulatedWorkDuration = simulatedWorkDuration;
     }
@@ -53,6 +59,15 @@ public sealed class QueuedJobWorker : BackgroundService
         if (result.Succeeded)
         {
             _jobs.MarkCompleted(job.Id);
+        }
+        else if (job.AttemptCount < job.MaxAttempts
+            && _definitions.Find(job.Type) is { } definition)
+        {
+            var scheduledAt = DateTimeOffset.UtcNow.AddSeconds(definition.RetryDelaySeconds);
+            _jobs.ScheduleRetry(
+                job.Id,
+                result.FailureReason ?? "Job execution failed.",
+                scheduledAt);
         }
         else
         {

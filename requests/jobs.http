@@ -51,7 +51,7 @@ Content-Type: application/json
   }
 }
 
-### Enqueue a job that will fail during execution
+### Enqueue a job that will fail during execution and auto-retry
 POST {{baseUrl}}/api/jobs
 Content-Type: application/json
 
@@ -82,9 +82,6 @@ GET {{baseUrl}}/api/jobs
 
 ### Get a job by id
 GET {{baseUrl}}/api/jobs/00000000-0000-0000-0000-000000000000
-
-### Retry a failed job by id
-POST {{baseUrl}}/api/jobs/00000000-0000-0000-0000-000000000000/retry
 
 ### Reject unsupported job type
 POST {{baseUrl}}/api/jobs

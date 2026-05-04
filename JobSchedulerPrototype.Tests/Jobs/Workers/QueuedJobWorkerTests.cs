@@ -14,6 +14,7 @@ public sealed class QueuedJobWorkerTests
         var worker = new QueuedJobWorker(
             store,
             new StubJobDispatcher(JobExecutionResult.Success()),
+            DefinitionRegistry(),
             pollInterval: TimeSpan.Zero,
             simulatedWorkDuration: TimeSpan.Zero);
 
@@ -29,7 +30,7 @@ public sealed class QueuedJobWorkerTests
     }
 
     [Fact]
-    public async Task ProcessNextJobAsyncFailsJobWhenExecutionFails()
+    public async Task ProcessNextJobAsyncSchedulesRetryWhenExecutionFailsAndAttemptsRemain()
     {
         var store = new InMemoryJobStore();
         var job = CreateJob();
@@ -37,6 +38,37 @@ public sealed class QueuedJobWorkerTests
         var worker = new QueuedJobWorker(
             store,
             new StubJobDispatcher(JobExecutionResult.Failure("Simulated welcome email failure.")),
+            DefinitionRegistry(),
+            pollInterval: TimeSpan.Zero,
+            simulatedWorkDuration: TimeSpan.Zero);
+
+        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+
+        Assert.True(processedJob);
+        var retriedJob = store.Get(job.Id);
+        Assert.NotNull(retriedJob);
+        Assert.Equal(JobStatus.Scheduled, retriedJob.Status);
+        Assert.Equal("Simulated welcome email failure.", retriedJob.FailureReason);
+        Assert.NotNull(retriedJob.StartedAt);
+        Assert.Null(retriedJob.CompletedAt);
+        Assert.NotNull(retriedJob.FailedAt);
+        Assert.NotNull(retriedJob.ScheduledAt);
+        Assert.Equal(
+            [JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Scheduled],
+            retriedJob.History.Select(change => change.Status));
+        Assert.Equal("Retry scheduled.", retriedJob.History[^1].Reason);
+    }
+
+    [Fact]
+    public async Task ProcessNextJobAsyncFailsJobWhenExecutionFailsAndAttemptsAreExhausted()
+    {
+        var store = new InMemoryJobStore();
+        var job = CreateJob(maxAttempts: 1);
+        store.Add(job);
+        var worker = new QueuedJobWorker(
+            store,
+            new StubJobDispatcher(JobExecutionResult.Failure("Simulated welcome email failure.")),
+            DefinitionRegistry(),
             pollInterval: TimeSpan.Zero,
             simulatedWorkDuration: TimeSpan.Zero);
 
@@ -59,6 +91,7 @@ public sealed class QueuedJobWorkerTests
         var worker = new QueuedJobWorker(
             store,
             new StubJobDispatcher(JobExecutionResult.Success()),
+            DefinitionRegistry(),
             pollInterval: TimeSpan.Zero,
             simulatedWorkDuration: TimeSpan.Zero);
 
@@ -67,14 +100,19 @@ public sealed class QueuedJobWorkerTests
         Assert.False(processedJob);
     }
 
-    private static JobRecord CreateJob()
+    private static JobRecord CreateJob(int maxAttempts = 3)
     {
         return JobRecord.Enqueue(
             Guid.NewGuid(),
             "send-welcome-email",
             Payload(),
-            maxAttempts: 3,
+            maxAttempts,
             new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero));
+    }
+
+    private static IJobDefinitionRegistry DefinitionRegistry()
+    {
+        return new JobDefinitionRegistry([new SendWelcomeEmailJobDefinition()]);
     }
 
     private static JsonElement Payload()

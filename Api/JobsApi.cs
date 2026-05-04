@@ -15,7 +15,6 @@ public static class JobsApi
         group.MapPost("", EnqueueJob);
         group.MapGet("", ListJobs);
         group.MapGet("/{id:guid}", GetJob);
-        group.MapPost("/{id:guid}/retry", RetryJob);
 
         return group;
     }
@@ -74,24 +73,6 @@ public static class JobsApi
             : TypedResults.Ok(ToResponse(job));
     }
 
-    private static Results<Ok<JobResponse>, NotFound, Conflict<JobValidationError>> RetryJob(
-        Guid id,
-        IJobStore jobs)
-    {
-        var job = jobs.Get(id);
-        if (job is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        if (!jobs.Retry(id))
-        {
-            return TypedResults.Conflict(new JobValidationError("Job is not eligible for retry."));
-        }
-
-        return TypedResults.Ok(ToResponse(jobs.Get(id)!));
-    }
-
     private static EnqueueJobValidationResult Validate(
         EnqueueJobRequest request,
         IJobDefinitionRegistry definitions)
@@ -145,7 +126,6 @@ public static class JobsApi
             job.FailedAt,
             job.AttemptCount,
             job.MaxAttempts,
-            job.RetryAvailable,
             job.History.Select(ToResponse).ToArray(),
             $"/api/jobs/{job.Id}");
     }
@@ -179,7 +159,6 @@ public sealed record JobResponse(
     DateTimeOffset? FailedAt,
     int AttemptCount,
     int MaxAttempts,
-    bool RetryAvailable,
     IReadOnlyCollection<JobStateChangeResponse> History,
     string StatusUrl);
 

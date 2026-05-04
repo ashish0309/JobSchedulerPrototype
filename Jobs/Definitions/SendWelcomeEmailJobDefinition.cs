@@ -8,6 +8,8 @@ public sealed class SendWelcomeEmailJobDefinition : IJobDefinition
 
     public int DefaultMaxAttempts => 3;
 
+    public int RetryDelaySeconds => 10;
+
     public int MaxScheduleDelaySeconds => 3600;
 
     public JobPayloadValidationResult ValidatePayload(JsonElement payload)

@@ -23,7 +23,6 @@ public sealed class JobRecordTests
         Assert.Equal(JobStatus.Queued, job.Status);
         Assert.Equal(3, job.MaxAttempts);
         Assert.Equal(0, job.AttemptCount);
-        Assert.False(job.RetryAvailable);
         Assert.Equal(enqueuedAt, job.EnqueuedAt);
         Assert.Equal(job.History[^1].Id, job.CurrentStateChangeId);
         Assert.Null(job.StartedAt);
@@ -119,7 +118,6 @@ public sealed class JobRecordTests
         Assert.Equal(failedJob.History[^1].Id, failedJob.CurrentStateChangeId);
         Assert.Equal("SMTP server unavailable.", failedJob.FailureReason);
         Assert.Equal(1, failedJob.AttemptCount);
-        Assert.True(failedJob.RetryAvailable);
         Assert.Equal(runningAt, failedJob.StartedAt);
         Assert.Null(failedJob.CompletedAt);
         Assert.Equal(failedAt, failedJob.FailedAt);
@@ -131,32 +129,36 @@ public sealed class JobRecordTests
     }
 
     [Fact]
-    public void RetryMovesFailedJobBackToQueuedAndClearsFailureReason()
+    public void ScheduleRetryAppendsFailureAndScheduledHistory()
     {
         var enqueuedAt = new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero);
-        var retryAt = enqueuedAt.AddMinutes(1);
+        var failedAt = enqueuedAt.AddSeconds(2);
+        var scheduledAt = failedAt.AddSeconds(10);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
             enqueuedAt);
-        var failedJob = job
-            .TransitionTo(JobStatus.Running, enqueuedAt.AddSeconds(1))
-            .TransitionToFailed("SMTP server unavailable.", enqueuedAt.AddSeconds(2));
+        var runningJob = job.TransitionTo(JobStatus.Running, enqueuedAt.AddSeconds(1));
 
-        var retriedJob = failedJob.Retry(retryAt);
+        var retriedJob = runningJob.ScheduleRetry(
+            "SMTP server unavailable.",
+            failedAt,
+            scheduledAt);
 
-        Assert.Equal(JobStatus.Queued, retriedJob.Status);
+        Assert.Equal(JobStatus.Scheduled, retriedJob.Status);
         Assert.Equal(retriedJob.History[^1].Id, retriedJob.CurrentStateChangeId);
-        Assert.Null(retriedJob.FailureReason);
+        Assert.Equal("SMTP server unavailable.", retriedJob.FailureReason);
         Assert.Equal(1, retriedJob.AttemptCount);
-        Assert.False(retriedJob.RetryAvailable);
+        Assert.Equal(failedAt, retriedJob.FailedAt);
+        Assert.Equal(scheduledAt, retriedJob.ScheduledAt);
         Assert.Equal(
-            [JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Queued],
+            [JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Scheduled],
             retriedJob.History.Select(change => change.Status));
-        Assert.Equal(retryAt, retriedJob.History[^1].ChangedAt);
-        Assert.Equal("Manually retried.", retriedJob.History[^1].Reason);
+        Assert.Equal("SMTP server unavailable.", retriedJob.History[^2].Reason);
+        Assert.Equal("Retry scheduled.", retriedJob.History[^1].Reason);
+        Assert.Equal(scheduledAt, retriedJob.History[^1].ScheduledAt);
     }
 
     [Fact]

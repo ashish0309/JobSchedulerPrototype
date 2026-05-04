@@ -27,8 +27,6 @@ public sealed record JobRecord
 
     public int AttemptCount => History.Count(change => change.Status == JobStatus.Running);
 
-    public bool RetryAvailable => Status == JobStatus.Failed && AttemptCount < MaxAttempts;
-
     private JobRecord(
         Guid id,
         string type,
@@ -117,18 +115,23 @@ public sealed record JobRecord
         };
     }
 
-    public JobRecord Retry(DateTimeOffset queuedAt)
+    public JobRecord ScheduleRetry(
+        string failureReason,
+        DateTimeOffset failedAt,
+        DateTimeOffset scheduledAt)
     {
-        var stateChange = JobStateChange.Queued(
-            queuedAt,
-            "Manually retried.");
+        var failedChange = JobStateChange.Failed(failedAt, failureReason);
+        var scheduledChange = JobStateChange.Scheduled(
+            failedAt,
+            "Retry scheduled.",
+            scheduledAt);
 
         return this with
         {
-            Status = JobStatus.Queued,
-            CurrentStateChangeId = stateChange.Id,
-            FailureReason = null,
-            History = [.. History, stateChange]
+            Status = JobStatus.Scheduled,
+            CurrentStateChangeId = scheduledChange.Id,
+            FailureReason = failureReason,
+            History = [.. History, failedChange, scheduledChange]
         };
     }
 

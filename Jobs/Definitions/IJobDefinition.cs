@@ -8,6 +8,8 @@ public interface IJobDefinition
 
     int DefaultMaxAttempts { get; }
 
+    int RetryDelaySeconds { get; }
+
     int MaxScheduleDelaySeconds { get; }
 
     JobPayloadValidationResult ValidatePayload(JsonElement payload);

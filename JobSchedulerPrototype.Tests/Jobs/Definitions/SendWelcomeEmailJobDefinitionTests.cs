@@ -14,6 +14,7 @@ public sealed class SendWelcomeEmailJobDefinitionTests
             """{"userId":"user_123","email":"person@example.com","shouldFail":true}"""));
 
         Assert.Equal(3, definition.DefaultMaxAttempts);
+        Assert.Equal(10, definition.RetryDelaySeconds);
         Assert.True(result.IsValid);
         Assert.Null(result.ErrorMessage);
 

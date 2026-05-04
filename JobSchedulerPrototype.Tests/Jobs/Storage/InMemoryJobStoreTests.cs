@@ -174,32 +174,39 @@ public sealed class InMemoryJobStoreTests
     }
 
     [Fact]
-    public void RetryMovesFailedJobBackToQueuedWhenAttemptsRemain()
+    public void ScheduleRetryMovesRunningJobToScheduledWhenAttemptsRemain()
     {
         var store = new InMemoryJobStore();
         var job = CreateJob();
+        var scheduledAt = new DateTimeOffset(2026, 5, 4, 10, 6, 0, TimeSpan.Zero);
         store.Add(job);
         store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero));
-        store.MarkFailed(job.Id, "SMTP server unavailable.");
 
-        var retried = store.Retry(job.Id);
+        var scheduled = store.ScheduleRetry(job.Id, "SMTP server unavailable.", scheduledAt);
         var retriedJob = store.Get(job.Id);
 
-        Assert.True(retried);
+        Assert.True(scheduled);
         Assert.NotNull(retriedJob);
-        Assert.Equal(JobStatus.Queued, retriedJob.Status);
-        Assert.Equal(retriedJob.History[^1].Id, retriedJob.CurrentStateChangeId);
-        Assert.Null(retriedJob.FailureReason);
-        Assert.Equal(1, retriedJob.AttemptCount);
-        Assert.False(retriedJob.RetryAvailable);
+        Assert.Equal(JobStatus.Scheduled, retriedJob.Status);
+        Assert.Equal(scheduledAt, retriedJob.ScheduledAt);
+        Assert.Equal("SMTP server unavailable.", retriedJob.FailureReason);
         Assert.Equal(
-            [JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Queued],
+            [JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Scheduled],
             retriedJob.History.Select(change => change.Status));
-        Assert.Equal("Manually retried.", retriedJob.History[^1].Reason);
+
+        Assert.Null(store.TryClaimNextDueJob(scheduledAt.AddTicks(-1)));
+        var claimedRetry = store.TryClaimNextDueJob(scheduledAt);
+
+        Assert.NotNull(claimedRetry);
+        Assert.Equal(job.Id, claimedRetry.Id);
+        Assert.Equal(JobStatus.Running, claimedRetry.Status);
+        Assert.Equal(
+            [JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Scheduled, JobStatus.Queued, JobStatus.Running],
+            claimedRetry.History.Select(change => change.Status));
     }
 
     [Fact]
-    public void RetryReturnsFalseWhenJobIsNotEligible()
+    public void ScheduleRetryReturnsFalseWhenJobIsNotEligible()
     {
         var store = new InMemoryJobStore();
         var exhaustedJob = CreateJob(
@@ -207,19 +214,21 @@ public sealed class InMemoryJobStoreTests
             maxAttempts: 1);
         var queuedJob = CreateJob(
             enqueuedAt: new DateTimeOffset(2026, 5, 4, 10, 1, 0, TimeSpan.Zero));
+        var scheduledAt = new DateTimeOffset(2026, 5, 4, 10, 6, 0, TimeSpan.Zero);
         store.Add(queuedJob);
         store.Add(exhaustedJob);
         store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero));
-        store.MarkFailed(exhaustedJob.Id, "SMTP server unavailable.");
 
-        var queuedRetry = store.Retry(queuedJob.Id);
-        var exhaustedRetry = store.Retry(exhaustedJob.Id);
-        var missingRetry = store.Retry(Guid.NewGuid());
+        var queuedRetry = store.ScheduleRetry(queuedJob.Id, "SMTP server unavailable.", scheduledAt);
+        var exhaustedRetry = store.ScheduleRetry(exhaustedJob.Id, "SMTP server unavailable.", scheduledAt);
+        var blankReasonRetry = store.ScheduleRetry(exhaustedJob.Id, "", scheduledAt);
+        var missingRetry = store.ScheduleRetry(Guid.NewGuid(), "SMTP server unavailable.", scheduledAt);
 
         Assert.False(queuedRetry);
         Assert.False(exhaustedRetry);
+        Assert.False(blankReasonRetry);
         Assert.False(missingRetry);
-        Assert.Equal(JobStatus.Failed, store.Get(exhaustedJob.Id)?.Status);
+        Assert.Equal(JobStatus.Running, store.Get(exhaustedJob.Id)?.Status);
     }
 
     private static JobRecord CreateJob(DateTimeOffset? enqueuedAt = null, int maxAttempts = 3)
