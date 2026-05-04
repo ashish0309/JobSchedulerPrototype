@@ -40,6 +40,10 @@ public sealed class IndexModelTests
         Assert.Equal(1, failedSummary.AttemptCount);
         Assert.Equal(3, failedSummary.MaxAttempts);
         Assert.True(failedSummary.RetryAvailable);
+        Assert.Equal(3, failedSummary.History.Count);
+        Assert.Equal(failedSummary.CurrentStateChangeId, failedSummary.History[^1].Id);
+        Assert.Equal(JobStatus.Failed, failedSummary.History[^1].Status);
+        Assert.Equal("SMTP server unavailable.", failedSummary.History[^1].Reason);
         Assert.Equal($"/api/jobs/{failedJob.Id}", failedSummary.StatusUrl);
 
         var queuedSummary = model.Jobs.Single(job => job.Id == queuedJob.Id);
@@ -49,6 +53,10 @@ public sealed class IndexModelTests
         Assert.Equal(0, queuedSummary.AttemptCount);
         Assert.Equal(3, queuedSummary.MaxAttempts);
         Assert.False(queuedSummary.RetryAvailable);
+        var queuedStateChange = Assert.Single(queuedSummary.History);
+        Assert.Equal(queuedSummary.CurrentStateChangeId, queuedStateChange.Id);
+        Assert.Equal(JobStatus.Queued, queuedStateChange.Status);
+        Assert.Equal("Job accepted.", queuedStateChange.Reason);
 
         var completedSummary = model.Jobs.Single(job => job.Id == completedJob.Id);
         Assert.Equal(JobStatus.Completed, completedSummary.Status);
@@ -58,6 +66,10 @@ public sealed class IndexModelTests
         Assert.Equal(1, completedSummary.AttemptCount);
         Assert.Equal(3, completedSummary.MaxAttempts);
         Assert.False(completedSummary.RetryAvailable);
+        Assert.Equal(3, completedSummary.History.Count);
+        Assert.Equal(completedSummary.CurrentStateChangeId, completedSummary.History[^1].Id);
+        Assert.Equal(JobStatus.Completed, completedSummary.History[^1].Status);
+        Assert.Equal("Job completed successfully.", completedSummary.History[^1].Reason);
     }
 
     private static JobRecord CreateJob(DateTimeOffset enqueuedAt)

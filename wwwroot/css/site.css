@@ -133,6 +133,48 @@ body {
   color: #a52525;
 }
 
+.history-details summary {
+  color: #284b9b;
+  cursor: pointer;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.history-list {
+  margin: 0.5rem 0 0;
+  min-width: 18rem;
+  padding-left: 1.2rem;
+}
+
+.history-list li {
+  margin-bottom: 0.5rem;
+}
+
+.history-list li:last-child {
+  margin-bottom: 0;
+}
+
+.current-state-change {
+  font-weight: 650;
+}
+
+.history-status {
+  display: inline-block;
+  min-width: 5rem;
+}
+
+.history-time {
+  color: #5c6470;
+  display: block;
+  font-family: var(--bs-font-monospace);
+  font-size: 0.8rem;
+}
+
+.history-reason {
+  color: #3d4652;
+  display: block;
+}
+
 @media (max-width: 767.98px) {
   .monitor-header {
     align-items: flex-start;

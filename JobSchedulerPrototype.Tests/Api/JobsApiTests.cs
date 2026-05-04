@@ -43,6 +43,11 @@ public sealed class JobsApiTests
         Assert.Equal(0, body.AttemptCount);
         Assert.Equal(3, body.MaxAttempts);
         Assert.False(body.RetryAvailable);
+        Assert.NotEqual(Guid.Empty, body.CurrentStateChangeId);
+        var stateChange = Assert.Single(body.History);
+        Assert.Equal(body.CurrentStateChangeId, stateChange.Id);
+        Assert.Equal("Queued", stateChange.Status);
+        Assert.Equal("Job accepted.", stateChange.Reason);
         Assert.Equal($"/api/jobs/{body.Id}", body.StatusUrl);
         Assert.Equal(new Uri(body.StatusUrl, UriKind.Relative), response.Headers.Location);
     }
@@ -82,6 +87,9 @@ public sealed class JobsApiTests
         Assert.Equal(0, job.AttemptCount);
         Assert.Equal(3, job.MaxAttempts);
         Assert.False(job.RetryAvailable);
+        var stateChange = Assert.Single(job.History);
+        Assert.Equal(job.CurrentStateChangeId, stateChange.Id);
+        Assert.Equal("Queued", stateChange.Status);
         Assert.Equal($"/api/jobs/{postedJob.Id}", job.StatusUrl);
     }
 
@@ -148,6 +156,10 @@ public sealed class JobsApiTests
         Assert.Equal(1, job.AttemptCount);
         Assert.Equal(3, job.MaxAttempts);
         Assert.True(job.RetryAvailable);
+        Assert.Equal(3, job.History.Count);
+        Assert.Equal(job.CurrentStateChangeId, job.History.Last().Id);
+        Assert.Equal("Failed", job.History.Last().Status);
+        Assert.Equal("SMTP server unavailable.", job.History.Last().Reason);
     }
 
     [Fact]
@@ -184,6 +196,10 @@ public sealed class JobsApiTests
         Assert.Equal(1, job.AttemptCount);
         Assert.Equal(3, job.MaxAttempts);
         Assert.False(job.RetryAvailable);
+        Assert.Equal(3, job.History.Count);
+        Assert.Equal(job.CurrentStateChangeId, job.History.Last().Id);
+        Assert.Equal("Completed", job.History.Last().Status);
+        Assert.Equal("Job completed successfully.", job.History.Last().Reason);
     }
 
     [Fact]
@@ -216,6 +232,10 @@ public sealed class JobsApiTests
         Assert.Equal(1, job.AttemptCount);
         Assert.Equal(3, job.MaxAttempts);
         Assert.False(job.RetryAvailable);
+        Assert.Equal(4, job.History.Count);
+        Assert.Equal(job.CurrentStateChangeId, job.History.Last().Id);
+        Assert.Equal("Queued", job.History.Last().Status);
+        Assert.Equal("Manually retried.", job.History.Last().Reason);
     }
 
     [Fact]

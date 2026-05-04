@@ -34,6 +34,7 @@ public sealed record JobSummary(
     Guid Id,
     string Type,
     JobStatus Status,
+    Guid CurrentStateChangeId,
     DateTimeOffset EnqueuedAt,
     DateTimeOffset? StartedAt,
     DateTimeOffset? CompletedAt,
@@ -41,6 +42,7 @@ public sealed record JobSummary(
     int AttemptCount,
     int MaxAttempts,
     bool RetryAvailable,
+    IReadOnlyList<JobStateChangeSummary> History,
     string StatusUrl,
     string? FailureReason)
 {
@@ -50,6 +52,7 @@ public sealed record JobSummary(
             job.Id,
             job.Type,
             job.Status,
+            job.CurrentStateChangeId,
             job.EnqueuedAt,
             job.StartedAt,
             job.CompletedAt,
@@ -57,7 +60,24 @@ public sealed record JobSummary(
             job.AttemptCount,
             job.MaxAttempts,
             job.RetryAvailable,
+            job.History.Select(JobStateChangeSummary.From).ToArray(),
             $"/api/jobs/{job.Id}",
             job.FailureReason);
+    }
+}
+
+public sealed record JobStateChangeSummary(
+    Guid Id,
+    JobStatus Status,
+    DateTimeOffset ChangedAt,
+    string Reason)
+{
+    public static JobStateChangeSummary From(JobStateChange stateChange)
+    {
+        return new JobStateChangeSummary(
+            stateChange.Id,
+            stateChange.Status,
+            stateChange.ChangedAt,
+            stateChange.Reason);
     }
 }

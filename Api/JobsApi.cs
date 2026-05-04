@@ -112,6 +112,7 @@ public static class JobsApi
             job.Id,
             job.Type,
             job.Status.ToString(),
+            job.CurrentStateChangeId,
             job.FailureReason,
             job.EnqueuedAt,
             job.StartedAt,
@@ -120,7 +121,17 @@ public static class JobsApi
             job.AttemptCount,
             job.MaxAttempts,
             job.RetryAvailable,
+            job.History.Select(ToResponse).ToArray(),
             $"/api/jobs/{job.Id}");
+    }
+
+    private static JobStateChangeResponse ToResponse(JobStateChange stateChange)
+    {
+        return new JobStateChangeResponse(
+            stateChange.Id,
+            stateChange.Status.ToString(),
+            stateChange.ChangedAt,
+            stateChange.Reason);
     }
 }
 
@@ -132,6 +143,7 @@ public sealed record JobResponse(
     Guid Id,
     string Type,
     string Status,
+    Guid CurrentStateChangeId,
     string? FailureReason,
     DateTimeOffset EnqueuedAt,
     DateTimeOffset? StartedAt,
@@ -140,7 +152,14 @@ public sealed record JobResponse(
     int AttemptCount,
     int MaxAttempts,
     bool RetryAvailable,
+    IReadOnlyCollection<JobStateChangeResponse> History,
     string StatusUrl);
+
+public sealed record JobStateChangeResponse(
+    Guid Id,
+    string Status,
+    DateTimeOffset ChangedAt,
+    string Reason);
 
 public sealed record JobValidationError(string Message);
 
