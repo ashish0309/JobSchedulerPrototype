@@ -35,6 +35,9 @@ public sealed record JobSummary(
     string Type,
     JobStatus Status,
     DateTimeOffset EnqueuedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset? FailedAt,
     string StatusUrl,
     string? FailureReason)
 {
@@ -45,6 +48,9 @@ public sealed record JobSummary(
             job.Type,
             job.Status,
             job.EnqueuedAt,
+            job.StartedAt,
+            job.CompletedAt,
+            job.FailedAt,
             $"/api/jobs/{job.Id}",
             job.FailureReason);
     }

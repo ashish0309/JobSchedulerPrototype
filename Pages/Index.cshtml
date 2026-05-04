@@ -48,6 +48,8 @@ else
                     <th scope="col">Job</th>
                     <th scope="col">Status</th>
                     <th scope="col">Enqueued</th>
+                    <th scope="col">Started</th>
+                    <th scope="col">Finished</th>
                     <th scope="col">Failure</th>
                     <th scope="col">API</th>
                 </tr>
@@ -64,6 +66,8 @@ else
                             <span class="status-badge status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span>
                         </td>
                         <td>@job.EnqueuedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz")</td>
+                        <td>@FormatTimestamp(job.StartedAt)</td>
+                        <td>@FormatTimestamp(job.CompletedAt ?? job.FailedAt)</td>
                         <td>
                             @if (job.Status == JobStatus.Failed)
                             {
@@ -80,4 +84,11 @@ else
             </tbody>
         </table>
     </div>
+}
+
+@functions {
+    private static string FormatTimestamp(DateTimeOffset? value)
+    {
+        return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz") ?? "Not yet";
+    }
 }

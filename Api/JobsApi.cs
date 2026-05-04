@@ -92,6 +92,9 @@ public static class JobsApi
             job.Status.ToString(),
             job.FailureReason,
             job.EnqueuedAt,
+            job.StartedAt,
+            job.CompletedAt,
+            job.FailedAt,
             $"/api/jobs/{job.Id}");
     }
 }
@@ -106,6 +109,9 @@ public sealed record JobResponse(
     string Status,
     string? FailureReason,
     DateTimeOffset EnqueuedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset? FailedAt,
     string StatusUrl);
 
 public sealed record JobValidationError(string Message);

@@ -33,7 +33,22 @@ public sealed class IndexModelTests
         var failedSummary = model.Jobs.Single(job => job.Id == failedJob.Id);
         Assert.Equal(JobStatus.Failed, failedSummary.Status);
         Assert.Equal("SMTP server unavailable.", failedSummary.FailureReason);
+        Assert.Equal(failedJob.EnqueuedAt, failedSummary.EnqueuedAt);
+        Assert.NotNull(failedSummary.StartedAt);
+        Assert.Null(failedSummary.CompletedAt);
+        Assert.NotNull(failedSummary.FailedAt);
         Assert.Equal($"/api/jobs/{failedJob.Id}", failedSummary.StatusUrl);
+
+        var queuedSummary = model.Jobs.Single(job => job.Id == queuedJob.Id);
+        Assert.Null(queuedSummary.StartedAt);
+        Assert.Null(queuedSummary.CompletedAt);
+        Assert.Null(queuedSummary.FailedAt);
+
+        var completedSummary = model.Jobs.Single(job => job.Id == completedJob.Id);
+        Assert.Equal(JobStatus.Completed, completedSummary.Status);
+        Assert.NotNull(completedSummary.StartedAt);
+        Assert.NotNull(completedSummary.CompletedAt);
+        Assert.Null(completedSummary.FailedAt);
     }
 
     private static JobRecord CreateJob(DateTimeOffset enqueuedAt)

@@ -21,6 +21,9 @@ public sealed class JobRecordTests
         Assert.Equal("send-welcome-email", job.Type);
         Assert.Equal(JobStatus.Queued, job.Status);
         Assert.Equal(enqueuedAt, job.EnqueuedAt);
+        Assert.Null(job.StartedAt);
+        Assert.Null(job.CompletedAt);
+        Assert.Null(job.FailedAt);
 
         var stateChange = Assert.Single(job.History);
         Assert.Equal(JobStatus.Queued, stateChange.Status);
@@ -44,6 +47,9 @@ public sealed class JobRecordTests
 
         Assert.Equal(JobStatus.Completed, completedJob.Status);
         Assert.Equal(enqueuedAt, completedJob.EnqueuedAt);
+        Assert.Equal(runningAt, completedJob.StartedAt);
+        Assert.Equal(completedAt, completedJob.CompletedAt);
+        Assert.Null(completedJob.FailedAt);
         Assert.Equal(
             [JobStatus.Queued, JobStatus.Running, JobStatus.Completed],
             completedJob.History.Select(change => change.Status));
@@ -67,6 +73,9 @@ public sealed class JobRecordTests
 
         Assert.Equal(JobStatus.Failed, failedJob.Status);
         Assert.Equal("SMTP server unavailable.", failedJob.FailureReason);
+        Assert.Equal(runningAt, failedJob.StartedAt);
+        Assert.Null(failedJob.CompletedAt);
+        Assert.Equal(failedAt, failedJob.FailedAt);
         Assert.Equal(
             [JobStatus.Queued, JobStatus.Running, JobStatus.Failed],
             failedJob.History.Select(change => change.Status));

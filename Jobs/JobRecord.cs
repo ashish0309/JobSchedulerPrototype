@@ -13,6 +13,12 @@ public sealed record JobRecord
 
     public DateTimeOffset EnqueuedAt => History[0].ChangedAt;
 
+    public DateTimeOffset? StartedAt => ChangedAt(JobStatus.Running);
+
+    public DateTimeOffset? CompletedAt => ChangedAt(JobStatus.Completed);
+
+    public DateTimeOffset? FailedAt => ChangedAt(JobStatus.Failed);
+
     private JobRecord(
         Guid id,
         string type,
@@ -66,6 +72,11 @@ public sealed record JobRecord
     public DateTimeOffset QueuedAt()
     {
         return EnqueuedAt;
+    }
+
+    private DateTimeOffset? ChangedAt(JobStatus status)
+    {
+        return History.LastOrDefault(change => change.Status == status)?.ChangedAt;
     }
 }
 

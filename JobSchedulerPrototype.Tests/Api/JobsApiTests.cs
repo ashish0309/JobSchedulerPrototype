@@ -37,6 +37,9 @@ public sealed class JobsApiTests
         Assert.Equal("send-welcome-email", body.Type);
         Assert.Equal("Queued", body.Status);
         Assert.Null(body.FailureReason);
+        Assert.Null(body.StartedAt);
+        Assert.Null(body.CompletedAt);
+        Assert.Null(body.FailedAt);
         Assert.Equal($"/api/jobs/{body.Id}", body.StatusUrl);
         Assert.Equal(new Uri(body.StatusUrl, UriKind.Relative), response.Headers.Location);
     }
@@ -69,6 +72,9 @@ public sealed class JobsApiTests
         Assert.Equal("send-welcome-email", job.Type);
         Assert.Equal("Queued", job.Status);
         Assert.Null(job.FailureReason);
+        Assert.Null(job.StartedAt);
+        Assert.Null(job.CompletedAt);
+        Assert.Null(job.FailedAt);
         Assert.Equal($"/api/jobs/{postedJob.Id}", job.StatusUrl);
     }
 
@@ -126,6 +132,42 @@ public sealed class JobsApiTests
         Assert.Equal(jobId, job.Id);
         Assert.Equal("Failed", job.Status);
         Assert.Equal("SMTP server unavailable.", job.FailureReason);
+        Assert.Equal(new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero), job.EnqueuedAt);
+        Assert.NotNull(job.StartedAt);
+        Assert.Null(job.CompletedAt);
+        Assert.NotNull(job.FailedAt);
+    }
+
+    [Fact]
+    public async Task GetJobReturnsLifecycleTimestampsWhenJobCompleted()
+    {
+        var jobId = Guid.NewGuid();
+        await using var factory = new JobsApiFactory(store =>
+        {
+            var job = JobRecord.Enqueue(
+                jobId,
+                "send-welcome-email",
+                Payload(),
+                new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero));
+
+            store.Add(job);
+            store.TryClaimNextQueuedJob();
+            store.MarkCompleted(jobId);
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/jobs/{jobId}");
+
+        response.EnsureSuccessStatusCode();
+        var job = await response.Content.ReadFromJsonAsync<JobResponse>();
+
+        Assert.NotNull(job);
+        Assert.Equal(jobId, job.Id);
+        Assert.Equal("Completed", job.Status);
+        Assert.Equal(new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero), job.EnqueuedAt);
+        Assert.NotNull(job.StartedAt);
+        Assert.NotNull(job.CompletedAt);
+        Assert.Null(job.FailedAt);
     }
 
     [Fact]
