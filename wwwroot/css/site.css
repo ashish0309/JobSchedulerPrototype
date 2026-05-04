@@ -140,6 +140,44 @@ body {
   white-space: nowrap;
 }
 
+.attempt-details summary {
+  color: #284b9b;
+  cursor: pointer;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.attempt-list {
+  margin: 0.5rem 0 0;
+  min-width: 16rem;
+  padding-left: 1.2rem;
+}
+
+.attempt-list li {
+  margin-bottom: 0.5rem;
+}
+
+.attempt-list li:last-child {
+  margin-bottom: 0;
+}
+
+.attempt-status {
+  display: block;
+  font-weight: 650;
+}
+
+.attempt-time {
+  color: #5c6470;
+  display: block;
+  font-family: var(--bs-font-monospace);
+  font-size: 0.8rem;
+}
+
+.attempt-reason {
+  color: #3d4652;
+  display: block;
+}
+
 .history-list {
   margin: 0.5rem 0 0;
   min-width: 18rem;

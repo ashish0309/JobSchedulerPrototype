@@ -42,6 +42,7 @@ public sealed record JobSummary(
     DateTimeOffset? FailedAt,
     int AttemptCount,
     int MaxAttempts,
+    IReadOnlyList<JobAttemptSummary> Attempts,
     IReadOnlyList<JobStateChangeSummary> History,
     string StatusUrl,
     string? FailureReason)
@@ -60,9 +61,32 @@ public sealed record JobSummary(
             job.FailedAt,
             job.AttemptCount,
             job.MaxAttempts,
+            job.Attempts.Select(JobAttemptSummary.From).ToArray(),
             job.History.Select(JobStateChangeSummary.From).ToArray(),
             $"/api/jobs/{job.Id}",
             job.FailureReason);
+    }
+}
+
+public sealed record JobAttemptSummary(
+    int Number,
+    JobStatus Status,
+    DateTimeOffset StartedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset? FailedAt,
+    TimeSpan? Duration,
+    string? FailureReason)
+{
+    public static JobAttemptSummary From(JobAttempt attempt)
+    {
+        return new JobAttemptSummary(
+            attempt.Number,
+            attempt.Status,
+            attempt.StartedAt,
+            attempt.CompletedAt,
+            attempt.FailedAt,
+            attempt.Duration,
+            attempt.FailureReason);
     }
 }
 

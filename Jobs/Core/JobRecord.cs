@@ -27,6 +27,8 @@ public sealed record JobRecord
 
     public int AttemptCount => History.Count(change => change.Status == JobStatus.Running);
 
+    public IReadOnlyList<JobAttempt> Attempts => BuildAttempts();
+
     private JobRecord(
         Guid id,
         string type,
@@ -158,6 +160,53 @@ public sealed record JobRecord
         return History.LastOrDefault(change => change.Status == status)?.ChangedAt;
     }
 
+    private IReadOnlyList<JobAttempt> BuildAttempts()
+    {
+        List<JobAttempt> attempts = [];
+        JobStateChange? runningChange = null;
+
+        foreach (var change in History)
+        {
+            if (change.Status == JobStatus.Running)
+            {
+                runningChange = change;
+                continue;
+            }
+
+            if (runningChange is null)
+            {
+                continue;
+            }
+
+            if (change.Status == JobStatus.Completed)
+            {
+                attempts.Add(JobAttempt.Completed(
+                    attempts.Count + 1,
+                    runningChange.ChangedAt,
+                    change.ChangedAt));
+                runningChange = null;
+            }
+            else if (change.Status == JobStatus.Failed)
+            {
+                attempts.Add(JobAttempt.Failed(
+                    attempts.Count + 1,
+                    runningChange.ChangedAt,
+                    change.ChangedAt,
+                    change.Reason));
+                runningChange = null;
+            }
+        }
+
+        if (runningChange is not null)
+        {
+            attempts.Add(JobAttempt.Running(
+                attempts.Count + 1,
+                runningChange.ChangedAt));
+        }
+
+        return attempts;
+    }
+
     private static string ReasonFor(JobStatus status)
     {
         return status switch
@@ -186,6 +235,59 @@ public sealed record JobRecord
                 "Use Schedule to create scheduled state changes."),
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unsupported job status.")
         };
+    }
+}
+
+public sealed record JobAttempt(
+    int Number,
+    JobStatus Status,
+    DateTimeOffset StartedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset? FailedAt,
+    string? FailureReason)
+{
+    public DateTimeOffset? FinishedAt => CompletedAt ?? FailedAt;
+
+    public TimeSpan? Duration => FinishedAt - StartedAt;
+
+    public static JobAttempt Running(int number, DateTimeOffset startedAt)
+    {
+        return new JobAttempt(
+            number,
+            JobStatus.Running,
+            startedAt,
+            CompletedAt: null,
+            FailedAt: null,
+            FailureReason: null);
+    }
+
+    public static JobAttempt Completed(
+        int number,
+        DateTimeOffset startedAt,
+        DateTimeOffset completedAt)
+    {
+        return new JobAttempt(
+            number,
+            JobStatus.Completed,
+            startedAt,
+            completedAt,
+            FailedAt: null,
+            FailureReason: null);
+    }
+
+    public static JobAttempt Failed(
+        int number,
+        DateTimeOffset startedAt,
+        DateTimeOffset failedAt,
+        string failureReason)
+    {
+        return new JobAttempt(
+            number,
+            JobStatus.Failed,
+            startedAt,
+            CompletedAt: null,
+            failedAt,
+            failureReason);
     }
 }
 

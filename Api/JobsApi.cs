@@ -126,8 +126,21 @@ public static class JobsApi
             job.FailedAt,
             job.AttemptCount,
             job.MaxAttempts,
+            job.Attempts.Select(ToResponse).ToArray(),
             job.History.Select(ToResponse).ToArray(),
             $"/api/jobs/{job.Id}");
+    }
+
+    private static JobAttemptResponse ToResponse(JobAttempt attempt)
+    {
+        return new JobAttemptResponse(
+            attempt.Number,
+            attempt.Status.ToString(),
+            attempt.StartedAt,
+            attempt.CompletedAt,
+            attempt.FailedAt,
+            attempt.Duration,
+            attempt.FailureReason);
     }
 
     private static JobStateChangeResponse ToResponse(JobStateChange stateChange)
@@ -159,8 +172,18 @@ public sealed record JobResponse(
     DateTimeOffset? FailedAt,
     int AttemptCount,
     int MaxAttempts,
+    IReadOnlyCollection<JobAttemptResponse> Attempts,
     IReadOnlyCollection<JobStateChangeResponse> History,
     string StatusUrl);
+
+public sealed record JobAttemptResponse(
+    int Number,
+    string Status,
+    DateTimeOffset StartedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset? FailedAt,
+    TimeSpan? Duration,
+    string? FailureReason);
 
 public sealed record JobStateChangeResponse(
     Guid Id,

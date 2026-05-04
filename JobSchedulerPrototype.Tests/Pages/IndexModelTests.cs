@@ -42,6 +42,11 @@ public sealed class IndexModelTests
         Assert.NotNull(failedSummary.FailedAt);
         Assert.Equal(1, failedSummary.AttemptCount);
         Assert.Equal(3, failedSummary.MaxAttempts);
+        var failedAttempt = Assert.Single(failedSummary.Attempts);
+        Assert.Equal(1, failedAttempt.Number);
+        Assert.Equal(JobStatus.Failed, failedAttempt.Status);
+        Assert.NotNull(failedAttempt.FailedAt);
+        Assert.Equal("SMTP server unavailable.", failedAttempt.FailureReason);
         Assert.Equal(3, failedSummary.History.Count);
         Assert.Equal(failedSummary.CurrentStateChangeId, failedSummary.History[^1].Id);
         Assert.Equal(JobStatus.Failed, failedSummary.History[^1].Status);
@@ -54,6 +59,7 @@ public sealed class IndexModelTests
         Assert.Null(queuedSummary.FailedAt);
         Assert.Equal(0, queuedSummary.AttemptCount);
         Assert.Equal(3, queuedSummary.MaxAttempts);
+        Assert.Empty(queuedSummary.Attempts);
         var queuedStateChange = Assert.Single(queuedSummary.History);
         Assert.Equal(queuedSummary.CurrentStateChangeId, queuedStateChange.Id);
         Assert.Equal(JobStatus.Queued, queuedStateChange.Status);
@@ -66,6 +72,11 @@ public sealed class IndexModelTests
         Assert.Null(completedSummary.FailedAt);
         Assert.Equal(1, completedSummary.AttemptCount);
         Assert.Equal(3, completedSummary.MaxAttempts);
+        var completedAttempt = Assert.Single(completedSummary.Attempts);
+        Assert.Equal(1, completedAttempt.Number);
+        Assert.Equal(JobStatus.Completed, completedAttempt.Status);
+        Assert.NotNull(completedAttempt.CompletedAt);
+        Assert.Null(completedAttempt.FailureReason);
         Assert.Equal(3, completedSummary.History.Count);
         Assert.Equal(completedSummary.CurrentStateChangeId, completedSummary.History[^1].Id);
         Assert.Equal(JobStatus.Completed, completedSummary.History[^1].Status);
@@ -75,6 +86,7 @@ public sealed class IndexModelTests
         Assert.Equal(JobStatus.Scheduled, scheduledSummary.Status);
         Assert.Equal(scheduledAt, scheduledSummary.ScheduledAt);
         Assert.Null(scheduledSummary.StartedAt);
+        Assert.Empty(scheduledSummary.Attempts);
         var scheduledStateChange = Assert.Single(scheduledSummary.History);
         Assert.Equal(scheduledSummary.CurrentStateChangeId, scheduledStateChange.Id);
         Assert.Equal(JobStatus.Scheduled, scheduledStateChange.Status);

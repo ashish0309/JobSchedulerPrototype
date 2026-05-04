@@ -69,7 +69,41 @@ else
                             <span class="status-badge status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span>
                         </td>
                         <td>
-                            @job.AttemptCount of @job.MaxAttempts
+                            <details class="attempt-details">
+                                <summary>@job.AttemptCount of @job.MaxAttempts</summary>
+                                @if (job.Attempts.Count == 0)
+                                {
+                                    <span class="text-muted">Not started</span>
+                                }
+                                else
+                                {
+                                    <ol class="attempt-list">
+                                        @foreach (var attempt in job.Attempts)
+                                        {
+                                            <li>
+                                                <span class="attempt-status">@attempt.Number. @attempt.Status</span>
+                                                <span class="attempt-time">Started @FormatTimestamp(attempt.StartedAt)</span>
+                                                @if (attempt.CompletedAt is not null)
+                                                {
+                                                    <span class="attempt-time">Completed @FormatTimestamp(attempt.CompletedAt)</span>
+                                                }
+                                                @if (attempt.FailedAt is not null)
+                                                {
+                                                    <span class="attempt-time">Failed @FormatTimestamp(attempt.FailedAt)</span>
+                                                }
+                                                @if (attempt.Duration is not null)
+                                                {
+                                                    <span class="attempt-time">Duration @FormatDuration(attempt.Duration)</span>
+                                                }
+                                                @if (attempt.FailureReason is not null)
+                                                {
+                                                    <span class="attempt-reason">@attempt.FailureReason</span>
+                                                }
+                                            </li>
+                                        }
+                                    </ol>
+                                }
+                            </details>
                         </td>
                         <td>@FormatTimestamp(job.ScheduledAt)</td>
                         <td>@job.EnqueuedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz")</td>
@@ -116,5 +150,12 @@ else
     private static string FormatTimestamp(DateTimeOffset? value)
     {
         return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz") ?? "Not yet";
+    }
+
+    private static string FormatDuration(TimeSpan? value)
+    {
+        return value is null
+            ? "Not yet"
+            : $"{value.Value.TotalSeconds:0.###}s";
     }
 }

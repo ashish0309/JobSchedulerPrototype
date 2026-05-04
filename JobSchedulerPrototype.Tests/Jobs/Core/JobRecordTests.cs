@@ -96,6 +96,15 @@ public sealed class JobRecordTests
             completedJob.History.Select(change => change.Status));
         Assert.Equal(completedAt, completedJob.History[^1].ChangedAt);
         Assert.Equal("Job completed successfully.", completedJob.History[^1].Reason);
+
+        var attempt = Assert.Single(completedJob.Attempts);
+        Assert.Equal(1, attempt.Number);
+        Assert.Equal(JobStatus.Completed, attempt.Status);
+        Assert.Equal(runningAt, attempt.StartedAt);
+        Assert.Equal(completedAt, attempt.CompletedAt);
+        Assert.Null(attempt.FailedAt);
+        Assert.Equal(TimeSpan.FromSeconds(2), attempt.Duration);
+        Assert.Null(attempt.FailureReason);
     }
 
     [Fact]
@@ -126,6 +135,15 @@ public sealed class JobRecordTests
             failedJob.History.Select(change => change.Status));
         Assert.Equal(failedAt, failedJob.History[^1].ChangedAt);
         Assert.Equal("SMTP server unavailable.", failedJob.History[^1].Reason);
+
+        var attempt = Assert.Single(failedJob.Attempts);
+        Assert.Equal(1, attempt.Number);
+        Assert.Equal(JobStatus.Failed, attempt.Status);
+        Assert.Equal(runningAt, attempt.StartedAt);
+        Assert.Null(attempt.CompletedAt);
+        Assert.Equal(failedAt, attempt.FailedAt);
+        Assert.Equal(TimeSpan.FromSeconds(2), attempt.Duration);
+        Assert.Equal("SMTP server unavailable.", attempt.FailureReason);
     }
 
     [Fact]
@@ -159,6 +177,57 @@ public sealed class JobRecordTests
         Assert.Equal("SMTP server unavailable.", retriedJob.History[^2].Reason);
         Assert.Equal("Retry scheduled.", retriedJob.History[^1].Reason);
         Assert.Equal(scheduledAt, retriedJob.History[^1].ScheduledAt);
+
+        var attempt = Assert.Single(retriedJob.Attempts);
+        Assert.Equal(1, attempt.Number);
+        Assert.Equal(JobStatus.Failed, attempt.Status);
+        Assert.Equal("SMTP server unavailable.", attempt.FailureReason);
+    }
+
+    [Fact]
+    public void AttemptsProjectMultipleRunsFromStateHistory()
+    {
+        var enqueuedAt = new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero);
+        var firstStartedAt = enqueuedAt.AddSeconds(1);
+        var firstFailedAt = enqueuedAt.AddSeconds(3);
+        var retryScheduledAt = enqueuedAt.AddSeconds(10);
+        var secondStartedAt = enqueuedAt.AddSeconds(11);
+        var completedAt = enqueuedAt.AddSeconds(14);
+        var job = JobRecord.Enqueue(
+            Guid.NewGuid(),
+            "send-welcome-email",
+            Payload(),
+            maxAttempts: 3,
+            enqueuedAt);
+
+        var completedJob = job
+            .TransitionTo(JobStatus.Running, firstStartedAt)
+            .ScheduleRetry("SMTP server unavailable.", firstFailedAt, retryScheduledAt)
+            .TransitionTo(JobStatus.Queued, retryScheduledAt)
+            .TransitionTo(JobStatus.Running, secondStartedAt)
+            .TransitionTo(JobStatus.Completed, completedAt);
+
+        Assert.Equal(2, completedJob.AttemptCount);
+        Assert.Collection(
+            completedJob.Attempts,
+            firstAttempt =>
+            {
+                Assert.Equal(1, firstAttempt.Number);
+                Assert.Equal(JobStatus.Failed, firstAttempt.Status);
+                Assert.Equal(firstStartedAt, firstAttempt.StartedAt);
+                Assert.Equal(firstFailedAt, firstAttempt.FailedAt);
+                Assert.Equal(TimeSpan.FromSeconds(2), firstAttempt.Duration);
+                Assert.Equal("SMTP server unavailable.", firstAttempt.FailureReason);
+            },
+            secondAttempt =>
+            {
+                Assert.Equal(2, secondAttempt.Number);
+                Assert.Equal(JobStatus.Completed, secondAttempt.Status);
+                Assert.Equal(secondStartedAt, secondAttempt.StartedAt);
+                Assert.Equal(completedAt, secondAttempt.CompletedAt);
+                Assert.Equal(TimeSpan.FromSeconds(3), secondAttempt.Duration);
+                Assert.Null(secondAttempt.FailureReason);
+            });
     }
 
     [Fact]

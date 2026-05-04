@@ -43,6 +43,7 @@ public sealed class JobsApiTests
         Assert.Null(body.FailedAt);
         Assert.Equal(0, body.AttemptCount);
         Assert.Equal(3, body.MaxAttempts);
+        Assert.Empty(body.Attempts);
         Assert.NotEqual(Guid.Empty, body.CurrentStateChangeId);
         var stateChange = Assert.Single(body.History);
         Assert.Equal(body.CurrentStateChangeId, stateChange.Id);
@@ -87,6 +88,7 @@ public sealed class JobsApiTests
         Assert.Null(job.FailedAt);
         Assert.Equal(0, job.AttemptCount);
         Assert.Equal(3, job.MaxAttempts);
+        Assert.Empty(job.Attempts);
         var stateChange = Assert.Single(job.History);
         Assert.Equal(job.CurrentStateChangeId, stateChange.Id);
         Assert.Equal("Queued", stateChange.Status);
@@ -187,6 +189,13 @@ public sealed class JobsApiTests
         Assert.NotNull(job.FailedAt);
         Assert.Equal(1, job.AttemptCount);
         Assert.Equal(3, job.MaxAttempts);
+        var attempt = Assert.Single(job.Attempts);
+        Assert.Equal(1, attempt.Number);
+        Assert.Equal("Failed", attempt.Status);
+        Assert.Null(attempt.CompletedAt);
+        Assert.NotNull(attempt.FailedAt);
+        Assert.NotNull(attempt.Duration);
+        Assert.Equal("SMTP server unavailable.", attempt.FailureReason);
         Assert.Equal(3, job.History.Count);
         Assert.Equal(job.CurrentStateChangeId, job.History.Last().Id);
         Assert.Equal("Failed", job.History.Last().Status);
@@ -227,6 +236,13 @@ public sealed class JobsApiTests
         Assert.Null(job.FailedAt);
         Assert.Equal(1, job.AttemptCount);
         Assert.Equal(3, job.MaxAttempts);
+        var attempt = Assert.Single(job.Attempts);
+        Assert.Equal(1, attempt.Number);
+        Assert.Equal("Completed", attempt.Status);
+        Assert.NotNull(attempt.CompletedAt);
+        Assert.Null(attempt.FailedAt);
+        Assert.NotNull(attempt.Duration);
+        Assert.Null(attempt.FailureReason);
         Assert.Equal(3, job.History.Count);
         Assert.Equal(job.CurrentStateChangeId, job.History.Last().Id);
         Assert.Equal("Completed", job.History.Last().Status);
