@@ -39,6 +39,15 @@ public sealed class JobSchedulerDbContext : DbContext
             job.Property(entity => entity.MaxAttempts)
                 .IsRequired();
 
+            job.Property(entity => entity.RunAt)
+                .HasConversion(
+                    runAt => runAt.HasValue
+                        ? runAt.Value.UtcDateTime.Ticks
+                        : (long?)null,
+                    ticks => ticks.HasValue
+                        ? new DateTimeOffset(new DateTime(ticks.Value, DateTimeKind.Utc))
+                        : null);
+
             job.Property(entity => entity.FailureReason)
                 .HasMaxLength(1000);
 
@@ -57,6 +66,8 @@ public sealed class JobSchedulerDbContext : DbContext
 
             job.Navigation(entity => entity.History)
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+            job.HasIndex(entity => new { entity.Status, entity.RunAt });
         });
 
         modelBuilder.Entity<JobStateChange>(stateChange =>

@@ -24,6 +24,7 @@ public sealed class JobRecordTests
         Assert.Equal(3, job.MaxAttempts);
         Assert.Equal(0, job.AttemptCount);
         Assert.Equal(enqueuedAt, job.EnqueuedAt);
+        Assert.Equal(enqueuedAt, job.RunAt);
         Assert.Equal(job.History[^1].Id, job.CurrentStateChangeId);
         Assert.Null(job.StartedAt);
         Assert.Null(job.CompletedAt);
@@ -56,6 +57,7 @@ public sealed class JobRecordTests
         Assert.Equal(id, job.Id);
         Assert.Equal(JobStatus.Scheduled, job.Status);
         Assert.Equal(scheduledAt, job.ScheduledAt);
+        Assert.Equal(scheduledAt, job.RunAt);
         Assert.Equal(changedAt, job.EnqueuedAt);
         Assert.Equal(job.History[^1].Id, job.CurrentStateChangeId);
 
@@ -85,6 +87,7 @@ public sealed class JobRecordTests
         var completedJob = runningJob.TransitionTo(JobStatus.Completed, completedAt);
 
         Assert.Equal(JobStatus.Completed, completedJob.Status);
+        Assert.Null(completedJob.RunAt);
         Assert.Equal(completedJob.History[^1].Id, completedJob.CurrentStateChangeId);
         Assert.Equal(1, completedJob.AttemptCount);
         Assert.Equal(enqueuedAt, completedJob.EnqueuedAt);
@@ -124,6 +127,7 @@ public sealed class JobRecordTests
         var failedJob = runningJob.TransitionToFailed("SMTP server unavailable.", failedAt);
 
         Assert.Equal(JobStatus.Failed, failedJob.Status);
+        Assert.Null(failedJob.RunAt);
         Assert.Equal(failedJob.History[^1].Id, failedJob.CurrentStateChangeId);
         Assert.Equal("SMTP server unavailable.", failedJob.FailureReason);
         Assert.Equal(1, failedJob.AttemptCount);
@@ -166,6 +170,7 @@ public sealed class JobRecordTests
             scheduledAt);
 
         Assert.Equal(JobStatus.Scheduled, retriedJob.Status);
+        Assert.Equal(scheduledAt, retriedJob.RunAt);
         Assert.Equal(retriedJob.History[^1].Id, retriedJob.CurrentStateChangeId);
         Assert.Equal("SMTP server unavailable.", retriedJob.FailureReason);
         Assert.Equal(1, retriedJob.AttemptCount);

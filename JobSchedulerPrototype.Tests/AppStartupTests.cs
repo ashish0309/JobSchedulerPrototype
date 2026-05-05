@@ -13,8 +13,12 @@ public sealed class AppStartupTests
     [Fact]
     public void AppUsesSqliteJobStoreAndCreatesDatabase()
     {
-        var databasePath = Path.Combine(
+        var databaseDirectory = Path.Combine(
             Path.GetTempPath(),
+            $"jobscheduler-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(databaseDirectory);
+        var databasePath = Path.Combine(
+            databaseDirectory,
             $"jobscheduler-{Guid.NewGuid():N}.db");
 
         try
@@ -31,9 +35,9 @@ public sealed class AppStartupTests
         }
         finally
         {
-            if (File.Exists(databasePath))
+            if (Directory.Exists(databaseDirectory))
             {
-                File.Delete(databasePath);
+                Directory.Delete(databaseDirectory, recursive: true);
             }
         }
     }
@@ -49,6 +53,8 @@ public sealed class AppStartupTests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseSetting("ConnectionStrings:JobStore", _connectionString);
+
             builder.ConfigureAppConfiguration((_, configuration) =>
             {
                 configuration.AddInMemoryCollection(

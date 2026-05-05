@@ -45,23 +45,25 @@ public sealed class SqliteJobStore : IJobStore
         using var db = _dbContextFactory.CreateDbContext();
         using var transaction = db.Database.BeginTransaction();
 
-        var job = LoadJobs(db)
-            .Where(job => job.Status is JobStatus.Queued or JobStatus.Scheduled)
-            .Select(job => new
-            {
-                Job = job,
-                RunAt = job.ScheduledAt ?? job.EnqueuedAt
-            })
-            .Where(candidate => candidate.RunAt <= now)
-            .OrderBy(candidate => candidate.RunAt)
-            .ThenBy(candidate => candidate.Job.EnqueuedAt)
-            .ThenBy(candidate => candidate.Job.Id)
-            .Select(candidate => candidate.Job)
+        var jobId = db.Jobs
+            .Where(job => job.RunAt != null
+                && job.RunAt <= now
+                && (job.Status == JobStatus.Queued || job.Status == JobStatus.Scheduled))
+            .OrderBy(job => job.RunAt)
+            .ThenBy(job => job.Id)
+            .Select(job => (Guid?)job.Id)
             .FirstOrDefault();
 
-        if (job is null)
+        if (jobId is null)
         {
             return null;
+        }
+
+        var job = LoadJob(db, jobId.Value);
+        if (job is null)
+        {
+            throw new InvalidOperationException(
+                $"Due job query returned missing job '{jobId}'.");
         }
 
         var originalStatus = job.Status;
@@ -84,7 +86,8 @@ public sealed class SqliteJobStore : IJobStore
                 && existingJob.Status == originalStatus)
             .ExecuteUpdate(setters => setters
                 .SetProperty(existingJob => existingJob.Status, JobStatus.Running)
-                .SetProperty(existingJob => existingJob.CurrentStateChangeId, runningJob.CurrentStateChangeId));
+                .SetProperty(existingJob => existingJob.CurrentStateChangeId, runningJob.CurrentStateChangeId)
+                .SetProperty(existingJob => existingJob.RunAt, runningJob.RunAt));
 
         if (rowsUpdated == 0)
         {
@@ -123,7 +126,8 @@ public sealed class SqliteJobStore : IJobStore
             previousHistoryCount: job.History.Count,
             setters => setters
                 .SetProperty(existingJob => existingJob.Status, JobStatus.Completed)
-                .SetProperty(existingJob => existingJob.CurrentStateChangeId, completedJob.CurrentStateChangeId));
+                .SetProperty(existingJob => existingJob.CurrentStateChangeId, completedJob.CurrentStateChangeId)
+                .SetProperty(existingJob => existingJob.RunAt, completedJob.RunAt));
 
         if (!completed)
         {
@@ -161,6 +165,7 @@ public sealed class SqliteJobStore : IJobStore
             setters => setters
                 .SetProperty(existingJob => existingJob.Status, JobStatus.Failed)
                 .SetProperty(existingJob => existingJob.CurrentStateChangeId, failedJob.CurrentStateChangeId)
+                .SetProperty(existingJob => existingJob.RunAt, failedJob.RunAt)
                 .SetProperty(existingJob => existingJob.FailureReason, failedJob.FailureReason));
 
         if (!failed)
@@ -201,6 +206,7 @@ public sealed class SqliteJobStore : IJobStore
             setters => setters
                 .SetProperty(existingJob => existingJob.Status, JobStatus.Scheduled)
                 .SetProperty(existingJob => existingJob.CurrentStateChangeId, retriedJob.CurrentStateChangeId)
+                .SetProperty(existingJob => existingJob.RunAt, retriedJob.RunAt)
                 .SetProperty(existingJob => existingJob.FailureReason, retriedJob.FailureReason));
 
         if (!scheduled)

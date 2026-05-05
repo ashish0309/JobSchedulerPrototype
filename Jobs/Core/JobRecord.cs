@@ -11,6 +11,7 @@ public sealed record JobRecord
     public JsonElement Payload { get; private init; }
     public JobStatus Status { get; private init; }
     public Guid CurrentStateChangeId { get; private init; }
+    public DateTimeOffset? RunAt { get; private init; }
     public int MaxAttempts { get; private init; }
     public string? FailureReason { get; private init; }
     public IReadOnlyList<JobStateChange> History => _history;
@@ -42,6 +43,7 @@ public sealed record JobRecord
         JsonElement payload,
         JobStatus status,
         Guid currentStateChangeId,
+        DateTimeOffset? runAt,
         int maxAttempts,
         string? failureReason,
         IReadOnlyList<JobStateChange> history)
@@ -51,6 +53,7 @@ public sealed record JobRecord
         Payload = payload;
         Status = status;
         CurrentStateChangeId = currentStateChangeId;
+        RunAt = runAt;
         MaxAttempts = maxAttempts;
         FailureReason = failureReason;
         _history = history
@@ -80,6 +83,7 @@ public sealed record JobRecord
             payload,
             JobStatus.Queued,
             queuedChange.Id,
+            enqueuedAt,
             maxAttempts,
             failureReason: null,
             [queuedChange]);
@@ -109,6 +113,7 @@ public sealed record JobRecord
             payload,
             JobStatus.Scheduled,
             scheduledChange.Id,
+            scheduledAt,
             maxAttempts,
             failureReason: null,
             [scheduledChange]);
@@ -124,6 +129,7 @@ public sealed record JobRecord
             Payload,
             nextStatus,
             stateChange.Id,
+            RunAtFor(nextStatus, changedAt),
             MaxAttempts,
             FailureReason,
             [.. History, stateChange]);
@@ -146,6 +152,7 @@ public sealed record JobRecord
             Payload,
             JobStatus.Scheduled,
             scheduledChange.Id,
+            scheduledAt,
             MaxAttempts,
             failureReason,
             [.. History, failedChange, scheduledChange]);
@@ -161,6 +168,7 @@ public sealed record JobRecord
             Payload,
             JobStatus.Failed,
             stateChange.Id,
+            runAt: null,
             MaxAttempts,
             reason,
             [.. History, stateChange]);
@@ -179,6 +187,7 @@ public sealed record JobRecord
             Payload,
             Status,
             CurrentStateChangeId,
+            RunAt,
             MaxAttempts,
             FailureReason,
             History
@@ -251,6 +260,13 @@ public sealed record JobRecord
             JobStatus.Failed => "Job failed.",
             _ => "Job state changed."
         };
+    }
+
+    private static DateTimeOffset? RunAtFor(JobStatus status, DateTimeOffset changedAt)
+    {
+        return status == JobStatus.Queued
+            ? changedAt
+            : null;
     }
 
     private static JobStateChange StateChangeFor(

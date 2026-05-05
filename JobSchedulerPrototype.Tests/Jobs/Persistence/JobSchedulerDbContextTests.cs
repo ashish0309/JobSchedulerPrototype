@@ -27,6 +27,12 @@ public sealed class JobSchedulerDbContextTests
         Assert.Equal(
             50,
             jobEntity.FindProperty(nameof(JobRecord.Status))?.GetMaxLength());
+        Assert.NotNull(jobEntity.FindProperty(nameof(JobRecord.RunAt)));
+        Assert.NotNull(jobEntity.FindIndex(
+            [
+                jobEntity.FindProperty(nameof(JobRecord.Status))!,
+                jobEntity.FindProperty(nameof(JobRecord.RunAt))!
+            ]));
         Assert.Equal(
             1000,
             jobEntity.FindProperty(nameof(JobRecord.FailureReason))?.GetMaxLength());
@@ -79,6 +85,7 @@ public sealed class JobSchedulerDbContextTests
 
             Assert.Equal("send-welcome-email", persistedJob.Type);
             Assert.Equal(JobStatus.Scheduled, persistedJob.Status);
+            Assert.Equal(scheduledAt, persistedJob.RunAt);
             Assert.Equal(persistedJob.History[^1].Id, persistedJob.CurrentStateChangeId);
             Assert.Equal(3, persistedJob.MaxAttempts);
             Assert.Null(persistedJob.FailureReason);
@@ -95,6 +102,100 @@ public sealed class JobSchedulerDbContextTests
             Assert.Equal("Job scheduled.", stateChange.Reason);
             Assert.Equal(scheduledAt, stateChange.ScheduledAt);
             Assert.IsType<ScheduledJobStateDetails>(stateChange.Details);
+        }
+    }
+
+    [Fact]
+    public async Task InitializerAddsRunAtColumnAndBackfillsPendingJobs()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<JobSchedulerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var jobId = Guid.NewGuid();
+        var stateChangeId = Guid.NewGuid();
+        var enqueuedAt = new DateTimeOffset(2026, 5, 5, 10, 0, 0, TimeSpan.Zero);
+        const string payload = """{"userId":"user_123"}""";
+
+        await using (var db = new JobSchedulerDbContext(options))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                CREATE TABLE "Jobs" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_Jobs" PRIMARY KEY,
+                    "Type" TEXT NOT NULL,
+                    "Payload" TEXT NOT NULL,
+                    "Status" TEXT NOT NULL,
+                    "CurrentStateChangeId" TEXT NOT NULL,
+                    "MaxAttempts" INTEGER NOT NULL,
+                    "FailureReason" TEXT NULL
+                );
+                """);
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                CREATE TABLE "JobStateChanges" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_JobStateChanges" PRIMARY KEY,
+                    "Status" TEXT NOT NULL,
+                    "ChangedAt" TEXT NOT NULL,
+                    "Reason" TEXT NOT NULL,
+                    "Sequence" INTEGER NOT NULL,
+                    "ScheduledAt" TEXT NULL,
+                    "JobId" TEXT NULL,
+                    CONSTRAINT "FK_JobStateChanges_Jobs_JobId" FOREIGN KEY ("JobId") REFERENCES "Jobs" ("Id") ON DELETE CASCADE
+                );
+                """);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO "Jobs" (
+                    "Id",
+                    "Type",
+                    "Payload",
+                    "Status",
+                    "CurrentStateChangeId",
+                    "MaxAttempts",
+                    "FailureReason")
+                VALUES (
+                    {jobId},
+                    'send-welcome-email',
+                    {payload},
+                    'Queued',
+                    {stateChangeId},
+                    3,
+                    NULL);
+                """);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO "JobStateChanges" (
+                    "Id",
+                    "Status",
+                    "ChangedAt",
+                    "Reason",
+                    "Sequence",
+                    "ScheduledAt",
+                    "JobId")
+                VALUES (
+                    {stateChangeId},
+                    'Queued',
+                    {enqueuedAt},
+                    'Job accepted.',
+                    1,
+                    NULL,
+                    {jobId});
+                """);
+        }
+
+        await using (var db = new JobSchedulerDbContext(options))
+        {
+            JobSchedulerDatabaseInitializer.EnsureCreated(db);
+        }
+
+        await using (var db = new JobSchedulerDbContext(options))
+        {
+            var persistedJob = await db.Jobs.SingleAsync(job => job.Id == jobId);
+
+            Assert.Equal(enqueuedAt, persistedJob.RunAt);
         }
     }
 
