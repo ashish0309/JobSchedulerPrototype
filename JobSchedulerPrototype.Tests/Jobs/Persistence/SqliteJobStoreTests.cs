@@ -52,6 +52,7 @@ public sealed class SqliteJobStoreTests
         var store = database.CreateStore();
         var earlierJob = CreateJob(enqueuedAt: new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero));
         var laterJob = CreateJob(enqueuedAt: new DateTimeOffset(2026, 5, 4, 10, 1, 0, TimeSpan.Zero));
+        var initialStateChangeId = earlierJob.CurrentStateChangeId;
         store.Add(laterJob);
         store.Add(earlierJob);
 
@@ -61,6 +62,8 @@ public sealed class SqliteJobStoreTests
         Assert.Equal(earlierJob.Id, claimedJob.Id);
         Assert.Equal(JobStatus.Running, claimedJob.Status);
         Assert.Equal([JobStatus.Queued, JobStatus.Running], claimedJob.History.Select(change => change.Status));
+        Assert.Equal(initialStateChangeId, claimedJob.History[0].Id);
+        Assert.Equal(claimedJob.CurrentStateChangeId, claimedJob.History[^1].Id);
         Assert.Equal(JobStatus.Running, database.CreateStore().Get(earlierJob.Id)?.Status);
         Assert.Equal(JobStatus.Queued, database.CreateStore().Get(laterJob.Id)?.Status);
     }
@@ -72,6 +75,7 @@ public sealed class SqliteJobStoreTests
         var store = database.CreateStore();
         var scheduledAt = new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero);
         var job = CreateScheduledJob(scheduledAt);
+        var initialStateChangeId = job.CurrentStateChangeId;
         store.Add(job);
 
         var earlyClaim = store.TryClaimNextDueJob(scheduledAt.AddTicks(-1));
@@ -84,6 +88,8 @@ public sealed class SqliteJobStoreTests
         Assert.Equal(
             [JobStatus.Scheduled, JobStatus.Queued, JobStatus.Running],
             dueClaim.History.Select(change => change.Status));
+        Assert.Equal(initialStateChangeId, dueClaim.History[0].Id);
+        Assert.Equal(dueClaim.CurrentStateChangeId, dueClaim.History[^1].Id);
         Assert.Equal(scheduledAt, dueClaim.ScheduledAt);
     }
 

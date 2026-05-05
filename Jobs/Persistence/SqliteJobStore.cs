@@ -41,6 +41,7 @@ public sealed class SqliteJobStore : IJobStore
     public JobRecord? TryClaimNextDueJob(DateTimeOffset now)
     {
         using var db = _dbContextFactory.CreateDbContext();
+        using var transaction = db.Database.BeginTransaction();
 
         var job = LoadJobs(db)
             .Where(job => job.Status is JobStatus.Queued or JobStatus.Scheduled)
@@ -61,6 +62,9 @@ public sealed class SqliteJobStore : IJobStore
             return null;
         }
 
+        var originalStatus = job.Status;
+        var originalHistoryCount = job.History.Count;
+
         if (job.Status == JobStatus.Scheduled)
         {
             job = job.TransitionTo(JobStatus.Queued, now);
@@ -73,8 +77,28 @@ public sealed class SqliteJobStore : IJobStore
         }
 
         var runningJob = job.TransitionTo(JobStatus.Running, now);
-        ReplaceJob(db, runningJob);
-        return runningJob;
+        var rowsUpdated = db.Jobs
+            .Where(existingJob => existingJob.Id == runningJob.Id
+                && existingJob.Status == originalStatus)
+            .ExecuteUpdate(setters => setters
+                .SetProperty(existingJob => existingJob.Status, JobStatus.Running)
+                .SetProperty(existingJob => existingJob.CurrentStateChangeId, runningJob.CurrentStateChangeId));
+
+        if (rowsUpdated == 0)
+        {
+            transaction.Rollback();
+            return null;
+        }
+
+        AppendStateChanges(
+            db,
+            runningJob.Id,
+            runningJob.History.Skip(originalHistoryCount));
+
+        db.SaveChanges();
+        transaction.Commit();
+
+        return LoadJob(db, runningJob.Id);
     }
 
     public bool MarkCompleted(Guid id)
@@ -147,6 +171,18 @@ public sealed class SqliteJobStore : IJobStore
             .Include(job => job.History)
             .AsEnumerable()
             .Select(job => job.WithOrderedHistory());
+    }
+
+    private static void AppendStateChanges(
+        JobSchedulerDbContext db,
+        Guid jobId,
+        IEnumerable<JobStateChange> stateChanges)
+    {
+        foreach (var stateChange in stateChanges)
+        {
+            db.JobStateChanges.Add(stateChange);
+            db.Entry(stateChange).Property("JobId").CurrentValue = jobId;
+        }
     }
 
     private static void ReplaceJob(JobSchedulerDbContext db, JobRecord job)
