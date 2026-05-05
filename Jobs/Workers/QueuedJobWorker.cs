@@ -2,7 +2,7 @@ using Microsoft.Extensions.Options;
 
 namespace JobSchedulerPrototype.Jobs;
 
-public sealed class QueuedJobWorker
+public sealed class QueuedJobWorker : IJobWorker
 {
     private readonly IJobLifecycleService _lifecycle;
     private readonly IJobDispatcher _dispatcher;
@@ -49,7 +49,7 @@ public sealed class QueuedJobWorker
             job.AttemptCount);
 
         await Task.Delay(_simulatedWorkDuration, cancellationToken);
-        var result = await _dispatcher.ExecuteAsync(job, cancellationToken);
+        var result = await ExecuteJob(job, cancellationToken);
         var completion = _lifecycle.CompleteExecution(job, result);
 
         if (completion.Status == JobExecutionCompletionStatus.Completed)
@@ -82,5 +82,30 @@ public sealed class QueuedJobWorker
         }
 
         return true;
+    }
+
+    private async Task<JobExecutionResult> ExecuteJob(
+        JobRecord job,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _dispatcher.ExecuteAsync(job, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Job {JobId} type={JobType} attempt={AttemptNumber} threw during execution",
+                job.Id,
+                job.Type,
+                job.AttemptCount);
+
+            return JobExecutionResult.Failure("Job execution threw an unhandled exception.");
+        }
     }
 }

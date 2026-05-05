@@ -15,7 +15,7 @@ public sealed class JobWorkerPoolHostedServiceTests
         var options = Options.Create(new JobWorkerOptions
         {
             WorkerCount = 3,
-            PollIntervalSeconds = 0,
+            PollIntervalSeconds = 1,
             SimulatedWorkDurationSeconds = 0
         });
         var worker = new QueuedJobWorker(
@@ -36,11 +36,34 @@ public sealed class JobWorkerPoolHostedServiceTests
         await pool.StartAsync(CancellationToken.None);
 
         await dispatcher.AllExecutionsCompleted.WaitAsync(TimeSpan.FromSeconds(5));
-        await pool.StopAsync(CancellationToken.None);
+        await StopPoolAsync(pool);
 
         Assert.Equal(6, dispatcher.ExecutionCount);
         Assert.True(dispatcher.MaxConcurrentExecutions > 1);
         Assert.All(store.List(), job => Assert.Equal(JobStatus.Completed, job.Status));
+    }
+
+    [Fact]
+    public async Task WorkerPoolContinuesAfterWorkerThrows()
+    {
+        var worker = new FaultThenSuccessWorker();
+        var options = Options.Create(new JobWorkerOptions
+        {
+            WorkerCount = 1,
+            PollIntervalSeconds = 1,
+            SimulatedWorkDurationSeconds = 0
+        });
+        var pool = new JobWorkerPoolHostedService(
+            worker,
+            options,
+            NullLogger<JobWorkerPoolHostedService>.Instance);
+
+        await pool.StartAsync(CancellationToken.None);
+
+        await worker.SuccessfulExecutionCompleted.WaitAsync(TimeSpan.FromSeconds(5));
+        await StopPoolAsync(pool);
+
+        Assert.Equal(2, worker.CallCount);
     }
 
     private static JobRecord CreateJob(int index)
@@ -64,6 +87,13 @@ public sealed class JobWorkerPoolHostedServiceTests
     {
         using var document = JsonDocument.Parse("""{"userId":"user_123","email":"person@example.com"}""");
         return document.RootElement.Clone();
+    }
+
+    private static async Task StopPoolAsync(JobWorkerPoolHostedService pool)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await pool.StopAsync(timeout.Token);
     }
 
     private sealed class TrackingJobDispatcher : IJobDispatcher
@@ -128,6 +158,28 @@ public sealed class JobWorkerPoolHostedServiceTests
                     return;
                 }
             }
+        }
+    }
+
+    private sealed class FaultThenSuccessWorker : IJobWorker
+    {
+        private readonly TaskCompletionSource _successfulExecutionCompleted = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _callCount;
+
+        public Task SuccessfulExecutionCompleted => _successfulExecutionCompleted.Task;
+
+        public int CallCount => _callCount;
+
+        public Task<bool> ProcessNextJobAsync(CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _callCount) == 1)
+            {
+                throw new InvalidOperationException("The worker failed.");
+            }
+
+            _successfulExecutionCompleted.SetResult();
+            return Task.FromResult(false);
         }
     }
 }

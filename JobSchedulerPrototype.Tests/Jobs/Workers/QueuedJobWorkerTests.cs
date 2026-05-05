@@ -83,6 +83,48 @@ public sealed class QueuedJobWorkerTests
     }
 
     [Fact]
+    public async Task ProcessNextJobAsyncSchedulesRetryWhenExecutionThrowsAndAttemptsRemain()
+    {
+        var store = new InMemoryJobStore();
+        var job = CreateJob();
+        store.Add(job);
+        var worker = new QueuedJobWorker(
+            LifecycleService(store),
+            new ThrowingJobDispatcher(),
+            NullLogger<QueuedJobWorker>.Instance,
+            simulatedWorkDuration: TimeSpan.Zero);
+
+        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+
+        Assert.True(processedJob);
+        var retriedJob = store.Get(job.Id);
+        Assert.NotNull(retriedJob);
+        Assert.Equal(JobStatus.Scheduled, retriedJob.Status);
+        Assert.Equal("Job execution threw an unhandled exception.", retriedJob.FailureReason);
+    }
+
+    [Fact]
+    public async Task ProcessNextJobAsyncFailsJobWhenExecutionThrowsAndAttemptsAreExhausted()
+    {
+        var store = new InMemoryJobStore();
+        var job = CreateJob(maxAttempts: 1);
+        store.Add(job);
+        var worker = new QueuedJobWorker(
+            LifecycleService(store),
+            new ThrowingJobDispatcher(),
+            NullLogger<QueuedJobWorker>.Instance,
+            simulatedWorkDuration: TimeSpan.Zero);
+
+        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+
+        Assert.True(processedJob);
+        var failedJob = store.Get(job.Id);
+        Assert.NotNull(failedJob);
+        Assert.Equal(JobStatus.Failed, failedJob.Status);
+        Assert.Equal("Job execution threw an unhandled exception.", failedJob.FailureReason);
+    }
+
+    [Fact]
     public async Task ProcessNextJobAsyncReturnsFalseWhenNoQueuedJobExists()
     {
         var store = new InMemoryJobStore();
@@ -135,6 +177,14 @@ public sealed class QueuedJobWorkerTests
         public Task<JobExecutionResult> ExecuteAsync(JobRecord job, CancellationToken cancellationToken)
         {
             return Task.FromResult(_result);
+        }
+    }
+
+    private sealed class ThrowingJobDispatcher : IJobDispatcher
+    {
+        public Task<JobExecutionResult> ExecuteAsync(JobRecord job, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("The job handler exploded.");
         }
     }
 }

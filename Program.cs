@@ -21,7 +21,7 @@ builder.Services.AddSingleton<IJobLifecycleService, JobLifecycleService>();
 builder.Services.AddSingleton<IJobHandler, SendWelcomeEmailJobHandler>();
 builder.Services.AddSingleton<IJobHandlerRegistry, JobHandlerRegistry>();
 builder.Services.AddSingleton<IJobDispatcher, JobDispatcher>();
-builder.Services.AddSingleton<QueuedJobWorker>();
+builder.Services.AddSingleton<IJobWorker, QueuedJobWorker>();
 builder.Services.AddHostedService<JobWorkerPoolHostedService>();
 
 var app = builder.Build();

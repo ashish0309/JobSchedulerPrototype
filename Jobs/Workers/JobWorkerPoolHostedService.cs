@@ -4,12 +4,12 @@ namespace JobSchedulerPrototype.Jobs;
 
 public sealed class JobWorkerPoolHostedService : BackgroundService
 {
-    private readonly QueuedJobWorker _worker;
+    private readonly IJobWorker _worker;
     private readonly ILogger<JobWorkerPoolHostedService> _logger;
     private readonly JobWorkerOptions _options;
 
     public JobWorkerPoolHostedService(
-        QueuedJobWorker worker,
+        IJobWorker worker,
         IOptions<JobWorkerOptions> options,
         ILogger<JobWorkerPoolHostedService> logger)
     {
@@ -39,11 +39,27 @@ public sealed class JobWorkerPoolHostedService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var processedJob = await _worker.ProcessNextJobAsync(stoppingToken);
-            if (!processedJob)
+            try
             {
-                _logger.LogDebug(
-                    "Job worker {WorkerNumber} found no due job",
+                var processedJob = await _worker.ProcessNextJobAsync(stoppingToken);
+                if (!processedJob)
+                {
+                    _logger.LogDebug(
+                        "Job worker {WorkerNumber} found no due job",
+                        workerNumber);
+
+                    await Task.Delay(_options.ValidPollInterval, stoppingToken);
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Job worker {WorkerNumber} failed while processing a job",
                     workerNumber);
 
                 await Task.Delay(_options.ValidPollInterval, stoppingToken);
