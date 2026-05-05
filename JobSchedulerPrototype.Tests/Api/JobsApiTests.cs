@@ -5,6 +5,7 @@ using JobSchedulerPrototype.Api;
 using JobSchedulerPrototype.Jobs;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -369,6 +370,7 @@ public sealed class JobsApiTests
     private sealed class JobsApiFactory : WebApplicationFactory<Program>
     {
         private readonly Action<IJobStore>? _configureStore;
+        private readonly string _connectionString = $"Data Source=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
 
         public JobsApiFactory(Action<IJobStore>? configureStore = null)
         {
@@ -377,6 +379,15 @@ public sealed class JobsApiTests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["ConnectionStrings:JobStore"] = _connectionString
+                    });
+            });
+
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IHostedService>();

@@ -1,11 +1,18 @@
 using JobSchedulerPrototype.Api;
 using JobSchedulerPrototype.Jobs;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-builder.Services.AddSingleton<IJobStore, InMemoryJobStore>();
+
+var jobStoreConnectionString = builder.Configuration.GetConnectionString("JobStore")
+    ?? "Data Source=jobscheduler.db";
+
+builder.Services.AddDbContextFactory<JobSchedulerDbContext>(options =>
+    options.UseSqlite(jobStoreConnectionString));
+builder.Services.AddSingleton<IJobStore, SqliteJobStore>();
 builder.Services.AddSingleton<IJobDefinition, SendWelcomeEmailJobDefinition>();
 builder.Services.AddSingleton<IJobDefinitionRegistry, JobDefinitionRegistry>();
 builder.Services.AddSingleton<IJobLifecycleService, JobLifecycleService>();
@@ -15,6 +22,12 @@ builder.Services.AddSingleton<IJobDispatcher, JobDispatcher>();
 builder.Services.AddHostedService<QueuedJobWorker>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<JobSchedulerDbContext>();
+    db.Database.EnsureCreated();
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

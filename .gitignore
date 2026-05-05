@@ -6,6 +6,11 @@
 # dotenv files
 .env
 
+# Local scheduler database files
+jobscheduler*.db
+jobscheduler*.db-shm
+jobscheduler*.db-wal
+
 # User-specific files
 *.rsuser
 *.suo
