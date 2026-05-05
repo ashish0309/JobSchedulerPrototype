@@ -16,7 +16,6 @@ public sealed class QueuedJobWorkerTests
             LifecycleService(store),
             new StubJobDispatcher(JobExecutionResult.Success()),
             NullLogger<QueuedJobWorker>.Instance,
-            pollInterval: TimeSpan.Zero,
             simulatedWorkDuration: TimeSpan.Zero);
 
         var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
@@ -40,7 +39,6 @@ public sealed class QueuedJobWorkerTests
             LifecycleService(store),
             new StubJobDispatcher(JobExecutionResult.Failure("Simulated welcome email failure.")),
             NullLogger<QueuedJobWorker>.Instance,
-            pollInterval: TimeSpan.Zero,
             simulatedWorkDuration: TimeSpan.Zero);
 
         var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
@@ -70,7 +68,6 @@ public sealed class QueuedJobWorkerTests
             LifecycleService(store),
             new StubJobDispatcher(JobExecutionResult.Failure("Simulated welcome email failure.")),
             NullLogger<QueuedJobWorker>.Instance,
-            pollInterval: TimeSpan.Zero,
             simulatedWorkDuration: TimeSpan.Zero);
 
         var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
@@ -93,7 +90,6 @@ public sealed class QueuedJobWorkerTests
             LifecycleService(store),
             new StubJobDispatcher(JobExecutionResult.Success()),
             NullLogger<QueuedJobWorker>.Instance,
-            pollInterval: TimeSpan.Zero,
             simulatedWorkDuration: TimeSpan.Zero);
 
         var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);

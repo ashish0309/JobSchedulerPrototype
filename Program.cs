@@ -12,6 +12,8 @@ var jobStoreConnectionString = builder.Configuration.GetConnectionString("JobSto
 
 builder.Services.AddDbContextFactory<JobSchedulerDbContext>(options =>
     options.UseSqlite(jobStoreConnectionString));
+builder.Services.Configure<JobWorkerOptions>(
+    builder.Configuration.GetSection(JobWorkerOptions.SectionName));
 builder.Services.AddSingleton<IJobStore, SqliteJobStore>();
 builder.Services.AddSingleton<IJobDefinition, SendWelcomeEmailJobDefinition>();
 builder.Services.AddSingleton<IJobDefinitionRegistry, JobDefinitionRegistry>();
@@ -19,7 +21,8 @@ builder.Services.AddSingleton<IJobLifecycleService, JobLifecycleService>();
 builder.Services.AddSingleton<IJobHandler, SendWelcomeEmailJobHandler>();
 builder.Services.AddSingleton<IJobHandlerRegistry, JobHandlerRegistry>();
 builder.Services.AddSingleton<IJobDispatcher, JobDispatcher>();
-builder.Services.AddHostedService<QueuedJobWorker>();
+builder.Services.AddSingleton<QueuedJobWorker>();
+builder.Services.AddHostedService<JobWorkerPoolHostedService>();
 
 var app = builder.Build();
 

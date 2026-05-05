@@ -1,21 +1,24 @@
+using Microsoft.Extensions.Options;
+
 namespace JobSchedulerPrototype.Jobs;
 
-public sealed class QueuedJobWorker : BackgroundService
+public sealed class QueuedJobWorker
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan SimulatedWorkDuration = TimeSpan.FromSeconds(2);
-
     private readonly IJobLifecycleService _lifecycle;
     private readonly IJobDispatcher _dispatcher;
     private readonly ILogger<QueuedJobWorker> _logger;
-    private readonly TimeSpan _pollInterval;
     private readonly TimeSpan _simulatedWorkDuration;
 
     public QueuedJobWorker(
         IJobLifecycleService lifecycle,
         IJobDispatcher dispatcher,
-        ILogger<QueuedJobWorker> logger)
-        : this(lifecycle, dispatcher, logger, PollInterval, SimulatedWorkDuration)
+        ILogger<QueuedJobWorker> logger,
+        IOptions<JobWorkerOptions> options)
+        : this(
+            lifecycle,
+            dispatcher,
+            logger,
+            options.Value.ValidSimulatedWorkDuration)
     {
     }
 
@@ -23,26 +26,12 @@ public sealed class QueuedJobWorker : BackgroundService
         IJobLifecycleService lifecycle,
         IJobDispatcher dispatcher,
         ILogger<QueuedJobWorker> logger,
-        TimeSpan pollInterval,
         TimeSpan simulatedWorkDuration)
     {
         _lifecycle = lifecycle;
         _dispatcher = dispatcher;
         _logger = logger;
-        _pollInterval = pollInterval;
         _simulatedWorkDuration = simulatedWorkDuration;
-    }
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            var processedJob = await ProcessNextJobAsync(stoppingToken);
-            if (!processedJob)
-            {
-                await Task.Delay(_pollInterval, stoppingToken);
-            }
-        }
     }
 
     public async Task<bool> ProcessNextJobAsync(CancellationToken cancellationToken)

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using JobSchedulerPrototype.Jobs;
 using Microsoft.Data.Sqlite;
@@ -187,6 +188,52 @@ public sealed class SqliteJobStoreTests
             claimedRetry.History.Select(change => change.Status));
     }
 
+    [Fact]
+    public async Task TryClaimNextDueJobClaimsEachDueJobOnceAcrossConcurrentWorkers()
+    {
+        await using var database = await SqliteJobStoreDatabase.CreateFileBackedAsync();
+        var now = new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero);
+        var jobs = Enumerable
+            .Range(0, 25)
+            .Select(index => CreateJob(enqueuedAt: now.AddSeconds(-index - 1)))
+            .ToArray();
+
+        foreach (var job in jobs)
+        {
+            database.CreateStore().Add(job);
+        }
+
+        var claimedJobIds = new ConcurrentBag<Guid>();
+        var workers = Enumerable
+            .Range(0, 8)
+            .Select(_ => Task.Run(() =>
+            {
+                while (true)
+                {
+                    var claimedJob = database.CreateStore().TryClaimNextDueJob(now);
+                    if (claimedJob is null)
+                    {
+                        return;
+                    }
+
+                    claimedJobIds.Add(claimedJob.Id);
+                }
+            }));
+
+        await Task.WhenAll(workers);
+
+        Assert.Equal(jobs.Length, claimedJobIds.Count);
+        Assert.Equal(jobs.Length, claimedJobIds.Distinct().Count());
+        Assert.Equal(
+            jobs.Select(job => job.Id).Order(),
+            claimedJobIds.Order());
+
+        foreach (var job in jobs)
+        {
+            Assert.Equal(JobStatus.Running, database.CreateStore().Get(job.Id)?.Status);
+        }
+    }
+
     private static JobRecord CreateJob(DateTimeOffset? enqueuedAt = null, int maxAttempts = 3)
     {
         return JobRecord.Enqueue(
@@ -218,13 +265,16 @@ public sealed class SqliteJobStoreTests
     {
         private readonly SqliteConnection _connection;
         private readonly DbContextOptions<JobSchedulerDbContext> _options;
+        private readonly string? _databasePath;
 
         private SqliteJobStoreDatabase(
             SqliteConnection connection,
-            DbContextOptions<JobSchedulerDbContext> options)
+            DbContextOptions<JobSchedulerDbContext> options,
+            string? databasePath = null)
         {
             _connection = connection;
             _options = options;
+            _databasePath = databasePath;
         }
 
         public static async Task<SqliteJobStoreDatabase> CreateAsync()
@@ -244,6 +294,27 @@ public sealed class SqliteJobStoreTests
             return new SqliteJobStoreDatabase(connection, options);
         }
 
+        public static async Task<SqliteJobStoreDatabase> CreateFileBackedAsync()
+        {
+            var databasePath = Path.Combine(
+                Path.GetTempPath(),
+                $"job-scheduler-tests-{Guid.NewGuid():N}.db");
+            var connectionString = $"Data Source={databasePath}";
+            var connection = new SqliteConnection(connectionString);
+            await connection.OpenAsync();
+
+            var options = new DbContextOptionsBuilder<JobSchedulerDbContext>()
+                .UseSqlite(connectionString)
+                .Options;
+
+            await using (var db = new JobSchedulerDbContext(options))
+            {
+                await db.Database.EnsureCreatedAsync();
+            }
+
+            return new SqliteJobStoreDatabase(connection, options, databasePath);
+        }
+
         public SqliteJobStore CreateStore()
         {
             return new SqliteJobStore(new TestDbContextFactory(_options));
@@ -258,6 +329,11 @@ public sealed class SqliteJobStoreTests
         public async ValueTask DisposeAsync()
         {
             await _connection.DisposeAsync();
+
+            if (_databasePath is not null && File.Exists(_databasePath))
+            {
+                File.Delete(_databasePath);
+            }
         }
     }
 
