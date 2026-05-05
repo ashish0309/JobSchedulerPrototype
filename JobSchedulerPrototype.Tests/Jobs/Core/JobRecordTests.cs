@@ -111,6 +111,26 @@ public sealed class JobRecordTests
     }
 
     [Fact]
+    public void ClaimAppendsRunningHistoryWithWorkerId()
+    {
+        var enqueuedAt = new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero);
+        var claimedAt = enqueuedAt.AddSeconds(5);
+        var job = JobRecord.Enqueue(
+            Guid.NewGuid(),
+            "send-welcome-email",
+            Payload(),
+            maxAttempts: 3,
+            enqueuedAt);
+
+        var claimedJob = job.Claim("worker-2", claimedAt);
+
+        Assert.Equal(JobStatus.Running, claimedJob.Status);
+        Assert.Null(claimedJob.RunAt);
+        Assert.Equal(claimedJob.History[^1].Id, claimedJob.CurrentStateChangeId);
+        Assert.Equal("Worker worker-2 claimed job.", claimedJob.History[^1].Reason);
+    }
+
+    [Fact]
     public void TransitionToFailedAppendsHistoryAndCapturesReason()
     {
         var enqueuedAt = new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero);

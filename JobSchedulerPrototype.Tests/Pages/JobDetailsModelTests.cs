@@ -19,7 +19,7 @@ public sealed class JobDetailsModelTests
             maxAttempts: 3,
             new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero));
         store.Add(job);
-        store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero));
+        store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero), "worker-1");
         store.MarkCompleted(job.Id);
         var model = new DetailsModel(store);
 

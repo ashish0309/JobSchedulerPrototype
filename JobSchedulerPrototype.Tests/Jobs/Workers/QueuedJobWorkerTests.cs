@@ -18,7 +18,7 @@ public sealed class QueuedJobWorkerTests
             NullLogger<QueuedJobWorker>.Instance,
             simulatedWorkDuration: TimeSpan.Zero);
 
-        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+        var processedJob = await worker.ProcessNextJobAsync("worker-1", CancellationToken.None);
 
         Assert.True(processedJob);
         var completedJob = store.Get(job.Id);
@@ -41,7 +41,7 @@ public sealed class QueuedJobWorkerTests
             NullLogger<QueuedJobWorker>.Instance,
             simulatedWorkDuration: TimeSpan.Zero);
 
-        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+        var processedJob = await worker.ProcessNextJobAsync("worker-1", CancellationToken.None);
 
         Assert.True(processedJob);
         var retriedJob = store.Get(job.Id);
@@ -70,7 +70,7 @@ public sealed class QueuedJobWorkerTests
             NullLogger<QueuedJobWorker>.Instance,
             simulatedWorkDuration: TimeSpan.Zero);
 
-        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+        var processedJob = await worker.ProcessNextJobAsync("worker-1", CancellationToken.None);
 
         Assert.True(processedJob);
         var failedJob = store.Get(job.Id);
@@ -94,7 +94,7 @@ public sealed class QueuedJobWorkerTests
             NullLogger<QueuedJobWorker>.Instance,
             simulatedWorkDuration: TimeSpan.Zero);
 
-        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+        var processedJob = await worker.ProcessNextJobAsync("worker-1", CancellationToken.None);
 
         Assert.True(processedJob);
         var retriedJob = store.Get(job.Id);
@@ -115,7 +115,7 @@ public sealed class QueuedJobWorkerTests
             NullLogger<QueuedJobWorker>.Instance,
             simulatedWorkDuration: TimeSpan.Zero);
 
-        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+        var processedJob = await worker.ProcessNextJobAsync("worker-1", CancellationToken.None);
 
         Assert.True(processedJob);
         var failedJob = store.Get(job.Id);
@@ -134,7 +134,7 @@ public sealed class QueuedJobWorkerTests
             NullLogger<QueuedJobWorker>.Instance,
             simulatedWorkDuration: TimeSpan.Zero);
 
-        var processedJob = await worker.ProcessNextJobAsync(CancellationToken.None);
+        var processedJob = await worker.ProcessNextJobAsync("worker-1", CancellationToken.None);
 
         Assert.False(processedJob);
     }

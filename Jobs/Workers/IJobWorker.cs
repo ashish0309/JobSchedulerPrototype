@@ -2,5 +2,5 @@ namespace JobSchedulerPrototype.Jobs;
 
 public interface IJobWorker
 {
-    Task<bool> ProcessNextJobAsync(CancellationToken cancellationToken);
+    Task<bool> ProcessNextJobAsync(string workerId, CancellationToken cancellationToken);
 }

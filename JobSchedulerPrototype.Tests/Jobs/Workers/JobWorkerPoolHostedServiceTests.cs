@@ -171,7 +171,7 @@ public sealed class JobWorkerPoolHostedServiceTests
 
         public int CallCount => _callCount;
 
-        public Task<bool> ProcessNextJobAsync(CancellationToken cancellationToken)
+        public Task<bool> ProcessNextJobAsync(string workerId, CancellationToken cancellationToken)
         {
             if (Interlocked.Increment(ref _callCount) == 1)
             {

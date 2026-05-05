@@ -34,16 +34,17 @@ public sealed class QueuedJobWorker : IJobWorker
         _simulatedWorkDuration = simulatedWorkDuration;
     }
 
-    public async Task<bool> ProcessNextJobAsync(CancellationToken cancellationToken)
+    public async Task<bool> ProcessNextJobAsync(string workerId, CancellationToken cancellationToken)
     {
-        var job = _lifecycle.ClaimNextDueJob(DateTimeOffset.UtcNow);
+        var job = _lifecycle.ClaimNextDueJob(DateTimeOffset.UtcNow, workerId);
         if (job is null)
         {
             return false;
         }
 
         _logger.LogInformation(
-            "Claimed job {JobId} type={JobType} attempt={AttemptNumber}",
+            "Worker {WorkerId} claimed job {JobId} type={JobType} attempt={AttemptNumber}",
+            workerId,
             job.Id,
             job.Type,
             job.AttemptCount);
@@ -55,7 +56,8 @@ public sealed class QueuedJobWorker : IJobWorker
         if (completion.Status == JobExecutionCompletionStatus.Completed)
         {
             _logger.LogInformation(
-                "Completed job {JobId} type={JobType} attempt={AttemptNumber}",
+                "Worker {WorkerId} completed job {JobId} type={JobType} attempt={AttemptNumber}",
+                workerId,
                 job.Id,
                 job.Type,
                 job.AttemptCount);
@@ -63,7 +65,8 @@ public sealed class QueuedJobWorker : IJobWorker
         else if (completion.Status == JobExecutionCompletionStatus.RetryScheduled)
         {
             _logger.LogWarning(
-                "Failed job {JobId} type={JobType} attempt={AttemptNumber} reason={FailureReason}; scheduled retry attempt={NextAttemptNumber} runAt={ScheduledAt}",
+                "Worker {WorkerId} failed job {JobId} type={JobType} attempt={AttemptNumber} reason={FailureReason}; scheduled retry attempt={NextAttemptNumber} runAt={ScheduledAt}",
+                workerId,
                 job.Id,
                 job.Type,
                 job.AttemptCount,
@@ -74,7 +77,8 @@ public sealed class QueuedJobWorker : IJobWorker
         else
         {
             _logger.LogError(
-                "Failed job {JobId} type={JobType} finalAttempt={AttemptNumber} reason={FailureReason}",
+                "Worker {WorkerId} failed job {JobId} type={JobType} finalAttempt={AttemptNumber} reason={FailureReason}",
+                workerId,
                 job.Id,
                 job.Type,
                 job.AttemptCount,

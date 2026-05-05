@@ -40,7 +40,7 @@ public sealed class SqliteJobStore : IJobStore
             .ToArray();
     }
 
-    public JobRecord? TryClaimNextDueJob(DateTimeOffset now)
+    public JobRecord? TryClaimNextDueJob(DateTimeOffset now, string workerId)
     {
         using var db = _dbContextFactory.CreateDbContext();
         using var transaction = db.Database.BeginTransaction();
@@ -80,7 +80,7 @@ public sealed class SqliteJobStore : IJobStore
                 $"Pending job query returned non-runnable job '{job.Id}' with status '{job.Status}'.");
         }
 
-        var runningJob = job.TransitionTo(JobStatus.Running, now);
+        var runningJob = job.Claim(workerId, now);
         var rowsUpdated = db.Jobs
             .Where(existingJob => existingJob.Id == runningJob.Id
                 && existingJob.Status == originalStatus)

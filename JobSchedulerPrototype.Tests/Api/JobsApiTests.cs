@@ -169,7 +169,7 @@ public sealed class JobsApiTests
                 new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero));
 
             store.Add(job);
-            store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero));
+            store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero), "worker-1");
             store.MarkFailed(jobId, "SMTP server unavailable.");
         });
         using var client = factory.CreateClient();
@@ -217,7 +217,7 @@ public sealed class JobsApiTests
                 new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero));
 
             store.Add(job);
-            store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero));
+            store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 5, 0, TimeSpan.Zero), "worker-1");
             store.MarkCompleted(jobId);
         });
         using var client = factory.CreateClient();

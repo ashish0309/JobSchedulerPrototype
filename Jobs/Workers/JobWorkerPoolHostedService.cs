@@ -41,7 +41,8 @@ public sealed class JobWorkerPoolHostedService : BackgroundService
         {
             try
             {
-                var processedJob = await _worker.ProcessNextJobAsync(stoppingToken);
+                var workerId = WorkerId(workerNumber);
+                var processedJob = await _worker.ProcessNextJobAsync(workerId, stoppingToken);
                 if (!processedJob)
                 {
                     _logger.LogDebug(
@@ -65,5 +66,10 @@ public sealed class JobWorkerPoolHostedService : BackgroundService
                 await Task.Delay(_options.ValidPollInterval, stoppingToken);
             }
         }
+    }
+
+    private static string WorkerId(int workerNumber)
+    {
+        return $"worker-{workerNumber}";
     }
 }

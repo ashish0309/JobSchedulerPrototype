@@ -135,6 +135,29 @@ public sealed record JobRecord
             [.. History, stateChange]);
     }
 
+    public JobRecord Claim(string workerId, DateTimeOffset claimedAt)
+    {
+        if (string.IsNullOrWhiteSpace(workerId))
+        {
+            throw new ArgumentException("Worker ID is required.", nameof(workerId));
+        }
+
+        var stateChange = JobStateChange.Running(
+            claimedAt,
+            $"Worker {workerId} claimed job.");
+
+        return new JobRecord(
+            Id,
+            Type,
+            Payload,
+            JobStatus.Running,
+            stateChange.Id,
+            runAt: null,
+            MaxAttempts,
+            FailureReason,
+            [.. History, stateChange]);
+    }
+
     public JobRecord ScheduleRetry(
         string failureReason,
         DateTimeOffset failedAt,

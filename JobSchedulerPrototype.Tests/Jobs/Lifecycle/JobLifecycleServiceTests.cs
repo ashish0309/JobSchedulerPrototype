@@ -78,7 +78,7 @@ public sealed class JobLifecycleServiceTests
             Payload(),
             delaySeconds: null);
 
-        var claimedJob = lifecycle.ClaimNextDueJob(DateTimeOffset.UtcNow);
+        var claimedJob = lifecycle.ClaimNextDueJob(DateTimeOffset.UtcNow, "worker-1");
 
         Assert.NotNull(enqueued.Job);
         Assert.NotNull(claimedJob);
@@ -147,7 +147,7 @@ public sealed class JobLifecycleServiceTests
             maxAttempts,
             new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero));
         store.Add(job);
-        return store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 1, 0, TimeSpan.Zero))!;
+        return store.TryClaimNextDueJob(new DateTimeOffset(2026, 5, 4, 10, 1, 0, TimeSpan.Zero), "worker-1")!;
     }
 
     private static JobLifecycleService CreateLifecycle(IJobStore store)
