@@ -8,7 +8,7 @@
 <section class="monitor-header">
     <div>
         <h1>Jobs</h1>
-        <p>Current in-memory job activity.</p>
+        <p>Current job activity.</p>
     </div>
     <a class="btn btn-outline-secondary" href="/api/jobs">API</a>
 </section>
@@ -50,10 +50,8 @@ else
                     <th scope="col">Attempts</th>
                     <th scope="col">Scheduled</th>
                     <th scope="col">Enqueued</th>
-                    <th scope="col">Started</th>
                     <th scope="col">Finished</th>
                     <th scope="col">Failure</th>
-                    <th scope="col">History</th>
                     <th scope="col">API</th>
                 </tr>
             </thead>
@@ -63,80 +61,24 @@ else
                     <tr>
                         <td>
                             <div class="job-type">@job.Type</div>
-                            <div class="job-id">@job.Id</div>
+                            <a class="job-id" asp-page="/Jobs/Details" asp-route-id="@job.Id">@job.Id</a>
                         </td>
                         <td>
                             <span class="status-badge status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span>
                         </td>
-                        <td>
-                            <details class="attempt-details">
-                                <summary>@job.AttemptCount of @job.MaxAttempts</summary>
-                                @if (job.Attempts.Count == 0)
-                                {
-                                    <span class="text-muted">Not started</span>
-                                }
-                                else
-                                {
-                                    <ol class="attempt-list">
-                                        @foreach (var attempt in job.Attempts)
-                                        {
-                                            <li>
-                                                <span class="attempt-status">@attempt.Number. @attempt.Status</span>
-                                                <span class="attempt-time">Started @FormatTimestamp(attempt.StartedAt)</span>
-                                                @if (attempt.CompletedAt is not null)
-                                                {
-                                                    <span class="attempt-time">Completed @FormatTimestamp(attempt.CompletedAt)</span>
-                                                }
-                                                @if (attempt.FailedAt is not null)
-                                                {
-                                                    <span class="attempt-time">Failed @FormatTimestamp(attempt.FailedAt)</span>
-                                                }
-                                                @if (attempt.Duration is not null)
-                                                {
-                                                    <span class="attempt-time">Duration @FormatDuration(attempt.Duration)</span>
-                                                }
-                                                @if (attempt.FailureReason is not null)
-                                                {
-                                                    <span class="attempt-reason">@attempt.FailureReason</span>
-                                                }
-                                            </li>
-                                        }
-                                    </ol>
-                                }
-                            </details>
-                        </td>
+                        <td>@job.AttemptCount / @job.MaxAttempts</td>
                         <td>@FormatTimestamp(job.ScheduledAt)</td>
                         <td>@job.EnqueuedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz")</td>
-                        <td>@FormatTimestamp(job.StartedAt)</td>
                         <td>@FormatTimestamp(job.CompletedAt ?? job.FailedAt)</td>
                         <td>
                             @if (job.Status == JobStatus.Failed)
                             {
-                                <span>@job.FailureReason</span>
+                                <span class="failure-summary">@job.FailureReason</span>
                             }
                             else
                             {
                                 <span class="text-muted">None</span>
                             }
-                        </td>
-                        <td>
-                            <details class="history-details">
-                                <summary>@job.History.Count changes</summary>
-                                <ol class="history-list">
-                                    @foreach (var stateChange in job.History)
-                                    {
-                                        <li class="@(stateChange.Id == job.CurrentStateChangeId ? "current-state-change" : null)">
-                                            <span class="history-status">@stateChange.Status</span>
-                                            <span class="history-time">@FormatTimestamp(stateChange.ChangedAt)</span>
-                                            @if (stateChange.ScheduledAt is not null)
-                                            {
-                                                <span class="history-time">Runs at @FormatTimestamp(stateChange.ScheduledAt)</span>
-                                            }
-                                            <span class="history-reason">@stateChange.Reason</span>
-                                        </li>
-                                    }
-                                </ol>
-                            </details>
                         </td>
                         <td><a href="@job.StatusUrl">@job.StatusUrl</a></td>
                     </tr>
@@ -152,10 +94,4 @@ else
         return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz") ?? "Not yet";
     }
 
-    private static string FormatDuration(TimeSpan? value)
-    {
-        return value is null
-            ? "Not yet"
-            : $"{value.Value.TotalSeconds:0.###}s";
-    }
 }

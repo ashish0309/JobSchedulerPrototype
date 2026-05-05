@@ -1,0 +1,141 @@
+@page "/jobs/{id:guid}"
+@using JobSchedulerPrototype.Jobs
+@model JobSchedulerPrototype.Pages.Jobs.DetailsModel
+@{
+    ViewData["Title"] = "Job details";
+    var job = Model.Job!;
+}
+
+<section class="monitor-header">
+    <div>
+        <h1>@job.Type</h1>
+        <p class="job-id">@job.Id</p>
+    </div>
+    <div class="header-actions">
+        <a class="btn btn-outline-secondary" asp-page="/Index">Jobs</a>
+        <a class="btn btn-outline-secondary" href="@job.StatusUrl">API</a>
+    </div>
+</section>
+
+<section class="job-detail-summary" aria-label="Job summary">
+    <div class="detail-item">
+        <span>Status</span>
+        <strong><span class="status-badge status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span></strong>
+    </div>
+    <div class="detail-item">
+        <span>Attempts</span>
+        <strong>@job.AttemptCount of @job.MaxAttempts</strong>
+    </div>
+    <div class="detail-item">
+        <span>Enqueued</span>
+        <strong>@FormatTimestamp(job.EnqueuedAt)</strong>
+    </div>
+    <div class="detail-item">
+        <span>Finished</span>
+        <strong>@FormatTimestamp(job.CompletedAt ?? job.FailedAt)</strong>
+    </div>
+</section>
+
+<section class="detail-section">
+    <h2>Timeline</h2>
+    <div class="detail-grid">
+        <div class="detail-item">
+            <span>Scheduled</span>
+            <strong>@FormatTimestamp(job.ScheduledAt)</strong>
+        </div>
+        <div class="detail-item">
+            <span>Started</span>
+            <strong>@FormatTimestamp(job.StartedAt)</strong>
+        </div>
+        <div class="detail-item">
+            <span>Completed</span>
+            <strong>@FormatTimestamp(job.CompletedAt)</strong>
+        </div>
+        <div class="detail-item">
+            <span>Failed</span>
+            <strong>@FormatTimestamp(job.FailedAt)</strong>
+        </div>
+    </div>
+    @if (job.FailureReason is not null)
+    {
+        <p class="failure-callout">@job.FailureReason</p>
+    }
+</section>
+
+<section class="detail-section">
+    <h2>Payload</h2>
+    <pre class="payload-view">@job.Payload</pre>
+</section>
+
+<section class="detail-section">
+    <h2>Attempts</h2>
+    @if (job.Attempts.Count == 0)
+    {
+        <p class="text-muted">Not started</p>
+    }
+    else
+    {
+        <ol class="attempt-list detail-list">
+            @foreach (var attempt in job.Attempts)
+            {
+                <li>
+                    <span class="attempt-status">@attempt.Number. @attempt.Status</span>
+                    <span class="attempt-time">Started @FormatTimestamp(attempt.StartedAt)</span>
+                    @if (attempt.CompletedAt is not null)
+                    {
+                        <span class="attempt-time">Completed @FormatTimestamp(attempt.CompletedAt)</span>
+                    }
+                    @if (attempt.FailedAt is not null)
+                    {
+                        <span class="attempt-time">Failed @FormatTimestamp(attempt.FailedAt)</span>
+                    }
+                    @if (attempt.Duration is not null)
+                    {
+                        <span class="attempt-time">Duration @FormatDuration(attempt.Duration)</span>
+                    }
+                    @if (attempt.FailureReason is not null)
+                    {
+                        <span class="attempt-reason">@attempt.FailureReason</span>
+                    }
+                </li>
+            }
+        </ol>
+    }
+</section>
+
+<section class="detail-section">
+    <h2>History</h2>
+    <ol class="history-list detail-list">
+        @foreach (var stateChange in job.History)
+        {
+            <li class="@(stateChange.Id == job.CurrentStateChangeId ? "current-state-change" : null)">
+                <span class="history-status">@stateChange.Status</span>
+                <span class="history-time">@FormatTimestamp(stateChange.ChangedAt)</span>
+                @if (stateChange.ScheduledAt is not null)
+                {
+                    <span class="history-time">Runs at @FormatTimestamp(stateChange.ScheduledAt)</span>
+                }
+                <span class="history-reason">@stateChange.Reason</span>
+            </li>
+        }
+    </ol>
+</section>
+
+@functions {
+    private static string FormatTimestamp(DateTimeOffset value)
+    {
+        return value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz");
+    }
+
+    private static string FormatTimestamp(DateTimeOffset? value)
+    {
+        return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz") ?? "Not yet";
+    }
+
+    private static string FormatDuration(TimeSpan? value)
+    {
+        return value is null
+            ? "Not yet"
+            : $"{value.Value.TotalSeconds:0.###}s";
+    }
+}

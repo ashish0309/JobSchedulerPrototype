@@ -40,6 +40,11 @@ body {
   margin: 0.25rem 0 0;
 }
 
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .status-summary {
   display: grid;
   gap: 0.75rem;
@@ -99,6 +104,7 @@ body {
 
 .job-id {
   color: #5c6470;
+  display: inline-block;
   font-family: var(--bs-font-monospace);
   font-size: 0.85rem;
   overflow-wrap: anywhere;
@@ -131,20 +137,6 @@ body {
 .status-failed {
   background: #fdecec;
   color: #a52525;
-}
-
-.history-details summary {
-  color: #284b9b;
-  cursor: pointer;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.attempt-details summary {
-  color: #284b9b;
-  cursor: pointer;
-  font-weight: 650;
-  white-space: nowrap;
 }
 
 .attempt-list {
@@ -213,6 +205,88 @@ body {
   display: block;
 }
 
+.failure-summary {
+  display: inline-block;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.job-detail-summary {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 1.5rem;
+}
+
+.detail-section {
+  border-top: 1px solid #d8dde3;
+  padding: 1.25rem 0;
+}
+
+.detail-section h2 {
+  font-size: 1.1rem;
+  font-weight: 650;
+  margin-bottom: 1rem;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.detail-item {
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 0.85rem;
+}
+
+.detail-item span {
+  color: #5c6470;
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.detail-item strong {
+  color: #1f2933;
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.payload-view {
+  background: #f7f8fa;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  color: #1f2933;
+  font-size: 0.9rem;
+  margin: 0;
+  max-height: 24rem;
+  overflow: auto;
+  padding: 1rem;
+  white-space: pre-wrap;
+}
+
+.detail-list {
+  margin-top: 0;
+  max-width: 48rem;
+}
+
+.failure-callout {
+  background: #fdecec;
+  border: 1px solid #f3b8b8;
+  border-radius: 8px;
+  color: #7d1f1f;
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+}
+
 @media (max-width: 767.98px) {
   .monitor-header {
     align-items: flex-start;
@@ -221,5 +295,14 @@ body {
 
   .status-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .job-detail-summary,
+  .detail-grid {
+    grid-template-columns: 1fr;
   }
 }
