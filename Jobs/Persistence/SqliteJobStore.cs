@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
+using System.Linq.Expressions;
 
 namespace JobSchedulerPrototype.Jobs;
 
@@ -104,6 +106,7 @@ public sealed class SqliteJobStore : IJobStore
     public bool MarkCompleted(Guid id)
     {
         using var db = _dbContextFactory.CreateDbContext();
+        using var transaction = db.Database.BeginTransaction();
 
         var job = LoadJob(db, id);
         if (job is null || job.Status != JobStatus.Running)
@@ -111,7 +114,24 @@ public sealed class SqliteJobStore : IJobStore
             return false;
         }
 
-        ReplaceJob(db, job.TransitionTo(JobStatus.Completed, DateTimeOffset.UtcNow));
+        var completedJob = job.TransitionTo(JobStatus.Completed, DateTimeOffset.UtcNow);
+        var completed = TryPersistTransition(
+            db,
+            id,
+            expectedStatus: JobStatus.Running,
+            completedJob,
+            previousHistoryCount: job.History.Count,
+            setters => setters
+                .SetProperty(existingJob => existingJob.Status, JobStatus.Completed)
+                .SetProperty(existingJob => existingJob.CurrentStateChangeId, completedJob.CurrentStateChangeId));
+
+        if (!completed)
+        {
+            transaction.Rollback();
+            return false;
+        }
+
+        transaction.Commit();
         return true;
     }
 
@@ -123,6 +143,7 @@ public sealed class SqliteJobStore : IJobStore
         }
 
         using var db = _dbContextFactory.CreateDbContext();
+        using var transaction = db.Database.BeginTransaction();
 
         var job = LoadJob(db, id);
         if (job is null || job.Status != JobStatus.Running)
@@ -130,7 +151,25 @@ public sealed class SqliteJobStore : IJobStore
             return false;
         }
 
-        ReplaceJob(db, job.TransitionToFailed(reason, DateTimeOffset.UtcNow));
+        var failedJob = job.TransitionToFailed(reason, DateTimeOffset.UtcNow);
+        var failed = TryPersistTransition(
+            db,
+            id,
+            expectedStatus: JobStatus.Running,
+            failedJob,
+            previousHistoryCount: job.History.Count,
+            setters => setters
+                .SetProperty(existingJob => existingJob.Status, JobStatus.Failed)
+                .SetProperty(existingJob => existingJob.CurrentStateChangeId, failedJob.CurrentStateChangeId)
+                .SetProperty(existingJob => existingJob.FailureReason, failedJob.FailureReason));
+
+        if (!failed)
+        {
+            transaction.Rollback();
+            return false;
+        }
+
+        transaction.Commit();
         return true;
     }
 
@@ -142,6 +181,7 @@ public sealed class SqliteJobStore : IJobStore
         }
 
         using var db = _dbContextFactory.CreateDbContext();
+        using var transaction = db.Database.BeginTransaction();
 
         var job = LoadJob(db, id);
         if (job is null
@@ -151,7 +191,25 @@ public sealed class SqliteJobStore : IJobStore
             return false;
         }
 
-        ReplaceJob(db, job.ScheduleRetry(reason, DateTimeOffset.UtcNow, scheduledAt));
+        var retriedJob = job.ScheduleRetry(reason, DateTimeOffset.UtcNow, scheduledAt);
+        var scheduled = TryPersistTransition(
+            db,
+            id,
+            expectedStatus: JobStatus.Running,
+            retriedJob,
+            previousHistoryCount: job.History.Count,
+            setters => setters
+                .SetProperty(existingJob => existingJob.Status, JobStatus.Scheduled)
+                .SetProperty(existingJob => existingJob.CurrentStateChangeId, retriedJob.CurrentStateChangeId)
+                .SetProperty(existingJob => existingJob.FailureReason, retriedJob.FailureReason));
+
+        if (!scheduled)
+        {
+            transaction.Rollback();
+            return false;
+        }
+
+        transaction.Commit();
         return true;
     }
 
@@ -185,25 +243,29 @@ public sealed class SqliteJobStore : IJobStore
         }
     }
 
-    private static void ReplaceJob(JobSchedulerDbContext db, JobRecord job)
+    private static bool TryPersistTransition(
+        JobSchedulerDbContext db,
+        Guid jobId,
+        JobStatus expectedStatus,
+        JobRecord updatedJob,
+        int previousHistoryCount,
+        Expression<Func<SetPropertyCalls<JobRecord>, SetPropertyCalls<JobRecord>>> setProperties)
     {
-        using var transaction = db.Database.BeginTransaction();
+        var rowsUpdated = db.Jobs
+            .Where(existingJob => existingJob.Id == jobId
+                && existingJob.Status == expectedStatus)
+            .ExecuteUpdate(setProperties);
 
-        var existingJob = db.Jobs
-            .Include(entity => entity.History)
-            .SingleOrDefault(entity => entity.Id == job.Id);
-
-        if (existingJob is null)
+        if (rowsUpdated == 0)
         {
-            return;
+            return false;
         }
 
-        db.Jobs.Remove(existingJob);
+        AppendStateChanges(
+            db,
+            jobId,
+            updatedJob.History.Skip(previousHistoryCount));
         db.SaveChanges();
-
-        db.Jobs.Add(job);
-        db.SaveChanges();
-
-        transaction.Commit();
+        return true;
     }
 }
