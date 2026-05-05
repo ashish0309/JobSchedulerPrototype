@@ -106,7 +106,7 @@ public sealed class JobSchedulerDbContextTests
     }
 
     [Fact]
-    public async Task InitializerAddsRunAtColumnAndBackfillsPendingJobs()
+    public async Task MigrateAppliesMigrationsToFreshDatabase()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -114,88 +114,17 @@ public sealed class JobSchedulerDbContextTests
             .UseSqlite(connection)
             .Options;
 
-        var jobId = Guid.NewGuid();
-        var stateChangeId = Guid.NewGuid();
-        var enqueuedAt = new DateTimeOffset(2026, 5, 5, 10, 0, 0, TimeSpan.Zero);
-        const string payload = """{"userId":"user_123"}""";
-
         await using (var db = new JobSchedulerDbContext(options))
         {
-            await db.Database.ExecuteSqlRawAsync(
-                """
-                CREATE TABLE "Jobs" (
-                    "Id" TEXT NOT NULL CONSTRAINT "PK_Jobs" PRIMARY KEY,
-                    "Type" TEXT NOT NULL,
-                    "Payload" TEXT NOT NULL,
-                    "Status" TEXT NOT NULL,
-                    "CurrentStateChangeId" TEXT NOT NULL,
-                    "MaxAttempts" INTEGER NOT NULL,
-                    "FailureReason" TEXT NULL
-                );
-                """);
-            await db.Database.ExecuteSqlRawAsync(
-                """
-                CREATE TABLE "JobStateChanges" (
-                    "Id" TEXT NOT NULL CONSTRAINT "PK_JobStateChanges" PRIMARY KEY,
-                    "Status" TEXT NOT NULL,
-                    "ChangedAt" TEXT NOT NULL,
-                    "Reason" TEXT NOT NULL,
-                    "Sequence" INTEGER NOT NULL,
-                    "ScheduledAt" TEXT NULL,
-                    "JobId" TEXT NULL,
-                    CONSTRAINT "FK_JobStateChanges_Jobs_JobId" FOREIGN KEY ("JobId") REFERENCES "Jobs" ("Id") ON DELETE CASCADE
-                );
-                """);
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $"""
-                INSERT INTO "Jobs" (
-                    "Id",
-                    "Type",
-                    "Payload",
-                    "Status",
-                    "CurrentStateChangeId",
-                    "MaxAttempts",
-                    "FailureReason")
-                VALUES (
-                    {jobId},
-                    'send-welcome-email',
-                    {payload},
-                    'Queued',
-                    {stateChangeId},
-                    3,
-                    NULL);
-                """);
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $"""
-                INSERT INTO "JobStateChanges" (
-                    "Id",
-                    "Status",
-                    "ChangedAt",
-                    "Reason",
-                    "Sequence",
-                    "ScheduledAt",
-                    "JobId")
-                VALUES (
-                    {stateChangeId},
-                    'Queued',
-                    {enqueuedAt},
-                    'Job accepted.',
-                    1,
-                    NULL,
-                    {jobId});
-                """);
+            await db.Database.MigrateAsync();
         }
 
         await using (var db = new JobSchedulerDbContext(options))
         {
-            JobSchedulerDatabaseInitializer.EnsureCreated(db);
-        }
-
-        await using (var db = new JobSchedulerDbContext(options))
-        {
-            var persistedJob = await db.Jobs.SingleAsync(job => job.Id == jobId);
-
-            Assert.Equal(enqueuedAt, persistedJob.RunAt);
+            Assert.True(await db.Database.CanConnectAsync());
+            Assert.Contains(
+                "20260505125233_InitialJobSchedulerSchema",
+                await db.Database.GetAppliedMigrationsAsync());
         }
     }
 
