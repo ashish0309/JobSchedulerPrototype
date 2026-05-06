@@ -47,6 +47,8 @@ public sealed class SendWelcomeEmailJobHandlerTests
 
         return JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             JobTypes.SendWelcomeEmail,
             document.RootElement.Clone(),
             maxAttempts: 3,

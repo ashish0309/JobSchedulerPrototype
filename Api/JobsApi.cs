@@ -60,6 +60,8 @@ public static class JobsApi
     {
         return new JobResponse(
             job.Id,
+            job.TenantId,
+            job.CreatedByActorId,
             job.Type,
             job.Status.ToString(),
             job.CurrentStateChangeId,
@@ -109,6 +111,8 @@ public sealed record EnqueueJobRequest(
 
 public sealed record JobResponse(
     Guid Id,
+    string TenantId,
+    string CreatedByActorId,
     string Type,
     string Status,
     Guid CurrentStateChangeId,

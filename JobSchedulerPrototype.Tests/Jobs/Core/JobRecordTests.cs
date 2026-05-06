@@ -5,6 +5,9 @@ namespace JobSchedulerPrototype.Tests.Jobs;
 
 public sealed class JobRecordTests
 {
+    private const string TenantId = "tenant-alpha";
+    private const string ActorId = "user-123";
+
     [Fact]
     public void EnqueueCreatesQueuedJobWithInitialHistory()
     {
@@ -13,12 +16,16 @@ public sealed class JobRecordTests
 
         var job = JobRecord.Enqueue(
             id,
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
             enqueuedAt);
 
         Assert.Equal(id, job.Id);
+        Assert.Equal(TenantId, job.TenantId);
+        Assert.Equal(ActorId, job.CreatedByActorId);
         Assert.Equal("send-welcome-email", job.Type);
         Assert.Equal(JobStatus.Queued, job.Status);
         Assert.Equal(3, job.MaxAttempts);
@@ -51,6 +58,8 @@ public sealed class JobRecordTests
 
         var job = JobRecord.Schedule(
             id,
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -58,6 +67,8 @@ public sealed class JobRecordTests
             changedAt);
 
         Assert.Equal(id, job.Id);
+        Assert.Equal(TenantId, job.TenantId);
+        Assert.Equal(ActorId, job.CreatedByActorId);
         Assert.Equal(JobStatus.Scheduled, job.Status);
         Assert.Equal(scheduledAt, job.ScheduledAt);
         Assert.Equal(scheduledAt, job.RunAt);
@@ -84,6 +95,8 @@ public sealed class JobRecordTests
         var completedAt = runningAt.AddSeconds(2);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -127,6 +140,8 @@ public sealed class JobRecordTests
         var leaseExpiresAt = claimedAt.AddMinutes(1);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -149,6 +164,8 @@ public sealed class JobRecordTests
         var claimedAt = new DateTimeOffset(2026, 5, 4, 10, 0, 5, TimeSpan.Zero);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -167,6 +184,8 @@ public sealed class JobRecordTests
         var secondLeaseExpiresAt = reclaimedAt.AddMinutes(1);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -195,6 +214,8 @@ public sealed class JobRecordTests
         var leaseExpiresAt = claimedAt.AddMinutes(1);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -217,6 +238,8 @@ public sealed class JobRecordTests
         var renewedLeaseExpiresAt = renewedAt.AddMinutes(1);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -241,6 +264,8 @@ public sealed class JobRecordTests
         var failedAt = runningAt.AddSeconds(2);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -284,6 +309,8 @@ public sealed class JobRecordTests
         var scheduledAt = failedAt.AddSeconds(10);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -329,6 +356,8 @@ public sealed class JobRecordTests
         var completedAt = enqueuedAt.AddSeconds(14);
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -369,6 +398,8 @@ public sealed class JobRecordTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => JobRecord.Enqueue(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 0,
@@ -382,9 +413,40 @@ public sealed class JobRecordTests
 
         Assert.Throws<ArgumentOutOfRangeException>(() => JobRecord.Schedule(
             Guid.NewGuid(),
+            TenantId,
+            ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 0,
+            now.AddSeconds(30),
+            now));
+    }
+
+    [Fact]
+    public void EnqueueRejectsBlankTenantId()
+    {
+        Assert.Throws<ArgumentException>(() => JobRecord.Enqueue(
+            Guid.NewGuid(),
+            "",
+            ActorId,
+            "send-welcome-email",
+            Payload(),
+            maxAttempts: 3,
+            new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero)));
+    }
+
+    [Fact]
+    public void ScheduleRejectsBlankCreatedByActorId()
+    {
+        var now = new DateTimeOffset(2026, 5, 4, 10, 0, 0, TimeSpan.Zero);
+
+        Assert.Throws<ArgumentException>(() => JobRecord.Schedule(
+            Guid.NewGuid(),
+            TenantId,
+            "",
+            "send-welcome-email",
+            Payload(),
+            maxAttempts: 3,
             now.AddSeconds(30),
             now));
     }

@@ -177,6 +177,8 @@ public sealed class QueuedJobWorkerTests
     {
         return JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts,
@@ -190,7 +192,10 @@ public sealed class QueuedJobWorkerTests
 
     private static IJobLifecycleService LifecycleService(IJobStore store)
     {
-        return new JobLifecycleService(store, DefinitionRegistry());
+        return new JobLifecycleService(
+            store,
+            DefinitionRegistry(),
+            new TestJobActorProvider());
     }
 
     private static JsonElement Payload()

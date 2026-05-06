@@ -1,6 +1,7 @@
 using System.Text.Json;
 using JobSchedulerPrototype.Jobs;
 using JobSchedulerPrototype.Pages.Jobs;
+using JobSchedulerPrototype.Tests.Jobs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -14,6 +15,8 @@ public sealed class JobDetailsModelTests
         var store = new InMemoryJobStore();
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -29,6 +32,8 @@ public sealed class JobDetailsModelTests
         Assert.IsType<PageResult>(result);
         Assert.NotNull(model.Job);
         Assert.Equal(job.Id, model.Job.Id);
+        Assert.Equal(TestJobActorProvider.TenantId, model.Job.TenantId);
+        Assert.Equal(TestJobActorProvider.ActorId, model.Job.CreatedByActorId);
         Assert.Equal("send-welcome-email", model.Job.Type);
         Assert.Equal(JobStatus.Completed, model.Job.Status);
         Assert.Null(model.Job.ClaimedBy);

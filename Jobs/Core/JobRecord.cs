@@ -7,6 +7,8 @@ public sealed record JobRecord
     private readonly List<JobStateChange> _history = [];
 
     public Guid Id { get; private init; }
+    public string TenantId { get; private init; }
+    public string CreatedByActorId { get; private init; }
     public string Type { get; private init; }
     public JsonElement Payload { get; private init; }
     public JobStatus Status { get; private init; }
@@ -37,11 +39,15 @@ public sealed record JobRecord
 
     private JobRecord()
     {
+        TenantId = string.Empty;
+        CreatedByActorId = string.Empty;
         Type = string.Empty;
     }
 
     private JobRecord(
         Guid id,
+        string tenantId,
+        string createdByActorId,
         string type,
         JsonElement payload,
         JobStatus status,
@@ -55,6 +61,8 @@ public sealed record JobRecord
         IReadOnlyList<JobStateChange> history)
     {
         Id = id;
+        TenantId = tenantId;
+        CreatedByActorId = createdByActorId;
         Type = type;
         Payload = payload;
         Status = status;
@@ -72,6 +80,8 @@ public sealed record JobRecord
 
     public static JobRecord Enqueue(
         Guid id,
+        string tenantId,
+        string createdByActorId,
         string type,
         JsonElement payload,
         int maxAttempts,
@@ -82,12 +92,16 @@ public sealed record JobRecord
             throw new ArgumentOutOfRangeException(nameof(maxAttempts), "Max attempts must be at least 1.");
         }
 
+        ValidateOwnership(tenantId, createdByActorId);
+
         var queuedChange = JobStateChange.Queued(
             enqueuedAt,
             "Job accepted.");
 
         return new JobRecord(
             id,
+            tenantId,
+            createdByActorId,
             type,
             payload,
             JobStatus.Queued,
@@ -103,6 +117,8 @@ public sealed record JobRecord
 
     public static JobRecord Schedule(
         Guid id,
+        string tenantId,
+        string createdByActorId,
         string type,
         JsonElement payload,
         int maxAttempts,
@@ -114,6 +130,8 @@ public sealed record JobRecord
             throw new ArgumentOutOfRangeException(nameof(maxAttempts), "Max attempts must be at least 1.");
         }
 
+        ValidateOwnership(tenantId, createdByActorId);
+
         var scheduledChange = JobStateChange.Scheduled(
             changedAt,
             "Job scheduled.",
@@ -121,6 +139,8 @@ public sealed record JobRecord
 
         return new JobRecord(
             id,
+            tenantId,
+            createdByActorId,
             type,
             payload,
             JobStatus.Scheduled,
@@ -140,6 +160,8 @@ public sealed record JobRecord
 
         return new JobRecord(
             Id,
+            TenantId,
+            CreatedByActorId,
             Type,
             Payload,
             nextStatus,
@@ -176,6 +198,8 @@ public sealed record JobRecord
 
         return new JobRecord(
             Id,
+            TenantId,
+            CreatedByActorId,
             Type,
             Payload,
             JobStatus.Running,
@@ -222,6 +246,8 @@ public sealed record JobRecord
 
         return new JobRecord(
             Id,
+            TenantId,
+            CreatedByActorId,
             Type,
             Payload,
             JobStatus.Running,
@@ -251,6 +277,8 @@ public sealed record JobRecord
 
         return new JobRecord(
             Id,
+            TenantId,
+            CreatedByActorId,
             Type,
             Payload,
             Status,
@@ -277,6 +305,8 @@ public sealed record JobRecord
 
         return new JobRecord(
             Id,
+            TenantId,
+            CreatedByActorId,
             Type,
             Payload,
             JobStatus.Scheduled,
@@ -296,6 +326,8 @@ public sealed record JobRecord
 
         return new JobRecord(
             Id,
+            TenantId,
+            CreatedByActorId,
             Type,
             Payload,
             JobStatus.Failed,
@@ -318,6 +350,8 @@ public sealed record JobRecord
     {
         return new JobRecord(
             Id,
+            TenantId,
+            CreatedByActorId,
             Type,
             Payload,
             Status,
@@ -398,6 +432,19 @@ public sealed record JobRecord
             JobStatus.Failed => "Job failed.",
             _ => "Job state changed."
         };
+    }
+
+    private static void ValidateOwnership(string tenantId, string createdByActorId)
+    {
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            throw new ArgumentException("Tenant ID is required.", nameof(tenantId));
+        }
+
+        if (string.IsNullOrWhiteSpace(createdByActorId))
+        {
+            throw new ArgumentException("Created-by actor ID is required.", nameof(createdByActorId));
+        }
     }
 
     private static DateTimeOffset? RunAtFor(JobStatus status, DateTimeOffset changedAt)

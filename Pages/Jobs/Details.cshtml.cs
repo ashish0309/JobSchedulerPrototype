@@ -30,6 +30,8 @@ public class DetailsModel : PageModel
 
 public sealed record JobDetails(
     Guid Id,
+    string TenantId,
+    string CreatedByActorId,
     string Type,
     JobStatus Status,
     Guid CurrentStateChangeId,
@@ -53,6 +55,8 @@ public sealed record JobDetails(
     {
         return new JobDetails(
             job.Id,
+            job.TenantId,
+            job.CreatedByActorId,
             job.Type,
             job.Status,
             job.CurrentStateChangeId,

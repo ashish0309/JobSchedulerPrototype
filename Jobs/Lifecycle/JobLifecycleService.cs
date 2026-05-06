@@ -8,13 +8,16 @@ public sealed class JobLifecycleService : IJobLifecycleService
 
     private readonly IJobStore _jobs;
     private readonly IJobDefinitionRegistry _definitions;
+    private readonly IJobActorProvider _actorProvider;
 
     public JobLifecycleService(
         IJobStore jobs,
-        IJobDefinitionRegistry definitions)
+        IJobDefinitionRegistry definitions,
+        IJobActorProvider actorProvider)
     {
         _jobs = jobs;
         _definitions = definitions;
+        _actorProvider = actorProvider;
     }
 
     public JobEnqueueResult Enqueue(
@@ -30,9 +33,12 @@ public sealed class JobLifecycleService : IJobLifecycleService
 
         var now = DateTimeOffset.UtcNow;
         var id = Guid.NewGuid();
+        var actor = _actorProvider.GetCurrentActor();
         var job = validationResult.DelaySeconds > ImmediateDelaySeconds
             ? JobRecord.Schedule(
                 id,
+                actor.TenantId,
+                actor.Id,
                 type,
                 validationResult.Payload,
                 validationResult.RetryPolicy.MaxAttempts,
@@ -40,6 +46,8 @@ public sealed class JobLifecycleService : IJobLifecycleService
                 now)
             : JobRecord.Enqueue(
                 id,
+                actor.TenantId,
+                actor.Id,
                 type,
                 validationResult.Payload,
                 validationResult.RetryPolicy.MaxAttempts,

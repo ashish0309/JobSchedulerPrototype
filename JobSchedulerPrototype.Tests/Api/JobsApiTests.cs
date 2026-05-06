@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using JobSchedulerPrototype.Api;
 using JobSchedulerPrototype.Jobs;
+using JobSchedulerPrototype.Tests.Jobs;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,12 @@ public sealed class JobsApiTests
     {
         await using var factory = new JobsApiFactory();
         using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add(
+            DevelopmentHeaderJobActorProvider.ActorIdHeaderName,
+            TestJobActorProvider.ActorId);
+        client.DefaultRequestHeaders.Add(
+            DevelopmentHeaderJobActorProvider.TenantIdHeaderName,
+            TestJobActorProvider.TenantId);
 
         var response = await client.PostAsJsonAsync("/api/jobs", new
         {
@@ -35,6 +42,8 @@ public sealed class JobsApiTests
         var body = await response.Content.ReadFromJsonAsync<JobResponse>();
         Assert.NotNull(body);
         Assert.NotEqual(Guid.Empty, body.Id);
+        Assert.Equal(TestJobActorProvider.TenantId, body.TenantId);
+        Assert.Equal(TestJobActorProvider.ActorId, body.CreatedByActorId);
         Assert.Equal("send-welcome-email", body.Type);
         Assert.Equal("Queued", body.Status);
         Assert.Null(body.FailureReason);
@@ -172,6 +181,8 @@ public sealed class JobsApiTests
         {
             var job = JobRecord.Enqueue(
                 jobId,
+                TestJobActorProvider.TenantId,
+                TestJobActorProvider.ActorId,
                 "send-welcome-email",
                 Payload(),
                 maxAttempts: 3,
@@ -224,6 +235,8 @@ public sealed class JobsApiTests
         {
             var job = JobRecord.Enqueue(
                 jobId,
+                TestJobActorProvider.TenantId,
+                TestJobActorProvider.ActorId,
                 "send-welcome-email",
                 Payload(),
                 maxAttempts: 3,

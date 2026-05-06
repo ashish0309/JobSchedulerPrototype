@@ -18,6 +18,14 @@ public sealed class JobSchedulerDbContextTests
 
         var jobEntity = db.Model.FindEntityType(typeof(JobRecord));
         Assert.NotNull(jobEntity);
+        Assert.False(jobEntity.FindProperty(nameof(JobRecord.TenantId))?.IsNullable);
+        Assert.Equal(
+            200,
+            jobEntity.FindProperty(nameof(JobRecord.TenantId))?.GetMaxLength());
+        Assert.False(jobEntity.FindProperty(nameof(JobRecord.CreatedByActorId))?.IsNullable);
+        Assert.Equal(
+            200,
+            jobEntity.FindProperty(nameof(JobRecord.CreatedByActorId))?.GetMaxLength());
         Assert.False(jobEntity.FindProperty(nameof(JobRecord.Type))?.IsNullable);
         Assert.Equal(
             200,
@@ -38,6 +46,8 @@ public sealed class JobSchedulerDbContextTests
                 jobEntity.FindProperty(nameof(JobRecord.Status))!,
                 jobEntity.FindProperty(nameof(JobRecord.RunAt))!
             ]));
+        Assert.NotNull(jobEntity.FindIndex(
+            [jobEntity.FindProperty(nameof(JobRecord.TenantId))!]));
         Assert.Equal(
             1000,
             jobEntity.FindProperty(nameof(JobRecord.FailureReason))?.GetMaxLength());
@@ -69,6 +79,8 @@ public sealed class JobSchedulerDbContextTests
         var scheduledAt = changedAt.AddSeconds(30);
         var job = JobRecord.Schedule(
             jobId,
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -89,6 +101,8 @@ public sealed class JobSchedulerDbContextTests
                 .SingleAsync(entity => entity.Id == jobId);
 
             Assert.Equal("send-welcome-email", persistedJob.Type);
+            Assert.Equal(TestJobActorProvider.TenantId, persistedJob.TenantId);
+            Assert.Equal(TestJobActorProvider.ActorId, persistedJob.CreatedByActorId);
             Assert.Equal(JobStatus.Scheduled, persistedJob.Status);
             Assert.Equal(scheduledAt, persistedJob.RunAt);
             Assert.Null(persistedJob.ClaimedBy);
@@ -138,6 +152,9 @@ public sealed class JobSchedulerDbContextTests
                 await db.Database.GetAppliedMigrationsAsync());
             Assert.Contains(
                 "20260505204411_AddJobLeaseExpiry",
+                await db.Database.GetAppliedMigrationsAsync());
+            Assert.Contains(
+                "20260506094822_AddJobOwnership",
                 await db.Database.GetAppliedMigrationsAsync());
         }
     }

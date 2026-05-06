@@ -21,6 +21,14 @@ public sealed class JobSchedulerDbContext : DbContext
             job.ToTable("Jobs");
             job.HasKey(entity => entity.Id);
 
+            job.Property(entity => entity.TenantId)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            job.Property(entity => entity.CreatedByActorId)
+                .IsRequired()
+                .HasMaxLength(200);
+
             job.Property(entity => entity.Type)
                 .IsRequired()
                 .HasMaxLength(200);
@@ -89,6 +97,7 @@ public sealed class JobSchedulerDbContext : DbContext
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
 
             job.HasIndex(entity => new { entity.Status, entity.RunAt });
+            job.HasIndex(entity => entity.TenantId);
         });
 
         modelBuilder.Entity<JobStateChange>(stateChange =>

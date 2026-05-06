@@ -20,6 +20,8 @@ public sealed class JobLifecycleServiceTests
         Assert.NotNull(result.Job);
         Assert.Null(result.ErrorMessage);
         Assert.Equal(JobStatus.Queued, result.Job.Status);
+        Assert.Equal(TestJobActorProvider.TenantId, result.Job.TenantId);
+        Assert.Equal(TestJobActorProvider.ActorId, result.Job.CreatedByActorId);
         Assert.Equal(3, result.Job.MaxAttempts);
         Assert.Equal(result.Job, store.Get(result.Job.Id));
     }
@@ -38,6 +40,8 @@ public sealed class JobLifecycleServiceTests
         Assert.True(result.Accepted);
         Assert.NotNull(result.Job);
         Assert.Equal(JobStatus.Scheduled, result.Job.Status);
+        Assert.Equal(TestJobActorProvider.TenantId, result.Job.TenantId);
+        Assert.Equal(TestJobActorProvider.ActorId, result.Job.CreatedByActorId);
         Assert.NotNull(result.Job.ScheduledAt);
         Assert.Equal(result.Job, store.Get(result.Job.Id));
     }
@@ -185,6 +189,8 @@ public sealed class JobLifecycleServiceTests
     {
         var job = JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts,
@@ -197,7 +203,8 @@ public sealed class JobLifecycleServiceTests
     {
         return new JobLifecycleService(
             store,
-            new JobDefinitionRegistry([new SendWelcomeEmailJobDefinition()]));
+            new JobDefinitionRegistry([new SendWelcomeEmailJobDefinition()]),
+            new TestJobActorProvider());
     }
 
     private static JsonElement Payload(

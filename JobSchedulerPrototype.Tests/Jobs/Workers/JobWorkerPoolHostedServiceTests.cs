@@ -70,6 +70,8 @@ public sealed class JobWorkerPoolHostedServiceTests
     {
         return JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 1,
@@ -80,7 +82,8 @@ public sealed class JobWorkerPoolHostedServiceTests
     {
         return new JobLifecycleService(
             store,
-            new JobDefinitionRegistry([new SendWelcomeEmailJobDefinition()]));
+            new JobDefinitionRegistry([new SendWelcomeEmailJobDefinition()]),
+            new TestJobActorProvider());
     }
 
     private static JsonElement Payload()

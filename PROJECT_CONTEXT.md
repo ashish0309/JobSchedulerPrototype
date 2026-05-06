@@ -28,9 +28,8 @@ Build a very basic job scheduler inspired by https://www.hangfire.io/. For now, 
 - Avoid overbuilding anything until asked for.
 
 ## Important Decisions
-- Use fixed launch ports:
-  - http://localhost:5000
-  - https://localhost:5001
+- Use fixed local development URL:
+  - http://localhost:5088
 
 ## Current Priorities
 1. Preserve the end goal and product direction.

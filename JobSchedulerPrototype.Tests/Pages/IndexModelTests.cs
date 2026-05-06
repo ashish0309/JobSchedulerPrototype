@@ -1,6 +1,7 @@
 using System.Text.Json;
 using JobSchedulerPrototype.Jobs;
 using JobSchedulerPrototype.Pages;
+using JobSchedulerPrototype.Tests.Jobs;
 
 namespace JobSchedulerPrototype.Tests.Pages;
 
@@ -112,6 +113,8 @@ public sealed class IndexModelTests
     {
         return JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,
@@ -122,6 +125,8 @@ public sealed class IndexModelTests
     {
         return JobRecord.Schedule(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts: 3,

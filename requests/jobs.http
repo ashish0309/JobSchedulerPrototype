@@ -1,7 +1,13 @@
-@baseUrl = http://localhost:5000
+@baseUrl = http://localhost:5088
+@actorId = user-123
+@tenantId = tenant-alpha
+@permissions = jobs.*
 
 ### Enqueue a supported job
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {
@@ -14,6 +20,9 @@ Content-Type: application/json
 
 ### Enqueue a billing receipt job sample
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {
@@ -27,6 +36,9 @@ Content-Type: application/json
 
 ### Enqueue a trial reminder job sample
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {
@@ -40,6 +52,9 @@ Content-Type: application/json
 
 ### Enqueue an onboarding nudge job sample
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {
@@ -53,6 +68,9 @@ Content-Type: application/json
 
 ### Enqueue a job that will fail during execution and auto-retry
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {
@@ -66,6 +84,9 @@ Content-Type: application/json
 
 ### Enqueue a delayed job
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {
@@ -85,6 +106,9 @@ GET {{baseUrl}}/api/jobs/00000000-0000-0000-0000-000000000000
 
 ### Reject unsupported job type
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {
@@ -94,6 +118,9 @@ Content-Type: application/json
 
 ### Reject missing payload
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {
@@ -102,6 +129,9 @@ Content-Type: application/json
 
 ### Reject missing email in payload
 POST {{baseUrl}}/api/jobs
+X-Actor-Id: {{actorId}}
+X-Tenant-Id: {{tenantId}}
+X-Permissions: {{permissions}}
 Content-Type: application/json
 
 {

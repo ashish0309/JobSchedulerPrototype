@@ -20,6 +20,8 @@ public sealed class SqliteJobStoreTests
 
         Assert.NotNull(persistedJob);
         Assert.Equal(job.Id, persistedJob.Id);
+        Assert.Equal(TestJobActorProvider.TenantId, persistedJob.TenantId);
+        Assert.Equal(TestJobActorProvider.ActorId, persistedJob.CreatedByActorId);
         Assert.Equal(JobStatus.Queued, persistedJob.Status);
         Assert.Equal(persistedJob.EnqueuedAt, persistedJob.RunAt);
         Assert.Null(persistedJob.ClaimedBy);
@@ -486,6 +488,8 @@ public sealed class SqliteJobStoreTests
     {
         return JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts,
@@ -496,6 +500,8 @@ public sealed class SqliteJobStoreTests
     {
         return JobRecord.Schedule(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts,

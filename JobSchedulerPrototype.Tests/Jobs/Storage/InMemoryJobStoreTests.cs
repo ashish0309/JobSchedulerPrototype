@@ -414,6 +414,8 @@ public sealed class InMemoryJobStoreTests
     {
         return JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts,
@@ -424,6 +426,8 @@ public sealed class InMemoryJobStoreTests
     {
         return JobRecord.Schedule(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             "send-welcome-email",
             Payload(),
             maxAttempts,

@@ -38,6 +38,8 @@ public sealed class JobDispatcherTests
 
         return JobRecord.Enqueue(
             Guid.NewGuid(),
+            TestJobActorProvider.TenantId,
+            TestJobActorProvider.ActorId,
             type,
             document.RootElement.Clone(),
             maxAttempts: 3,

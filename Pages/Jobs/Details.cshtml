@@ -23,6 +23,14 @@
         <strong><span class="status-badge status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span></strong>
     </div>
     <div class="detail-item">
+        <span>Tenant</span>
+        <strong>@job.TenantId</strong>
+    </div>
+    <div class="detail-item">
+        <span>Created by</span>
+        <strong>@job.CreatedByActorId</strong>
+    </div>
+    <div class="detail-item">
         <span>Attempts</span>
         <strong>@job.AttemptCount of @job.MaxAttempts</strong>
     </div>
