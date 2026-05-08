@@ -87,16 +87,12 @@ public sealed class QueuedJobWorker : IJobWorker
     public async Task<bool> ProcessNextJobAsync(string workerId, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
-        ClaimNextDueJobActionResult claimResult;
-        using (_dataAccessScopeProvider.BeginScope(DataAccessScope.AllTenants()))
-        {
-            claimResult = await _actions.DispatchAsync(
-                new ClaimNextDueJobActionRequest(
-                    now,
-                    workerId,
-                    now.Add(_leaseDuration)),
-                cancellationToken);
-        }
+        var claimResult = await _actions.DispatchAsync(
+            new ClaimNextDueJobActionRequest(
+                now,
+                workerId,
+                now.Add(_leaseDuration)),
+            cancellationToken);
 
         if (!claimResult.IsAuthorized)
         {
@@ -140,13 +136,9 @@ public sealed class QueuedJobWorker : IJobWorker
             await StopLeaseRenewal(leaseRenewalCancellation, leaseRenewalTask);
         }
 
-        CompleteJobExecutionActionResult completionResult;
-        using (_dataAccessScopeProvider.BeginScope(DataAccessScope.AllTenants()))
-        {
-            completionResult = await _actions.DispatchAsync(
-                new CompleteJobExecutionActionRequest(job, result),
-                cancellationToken);
-        }
+        var completionResult = await _actions.DispatchAsync(
+            new CompleteJobExecutionActionRequest(job, result),
+            cancellationToken);
 
         if (!completionResult.IsAuthorized)
         {
@@ -236,8 +228,6 @@ public sealed class QueuedJobWorker : IJobWorker
         string workerId,
         CancellationToken cancellationToken)
     {
-        using var scope = _dataAccessScopeProvider.BeginScope(DataAccessScope.AllTenants());
-
         try
         {
             while (true)

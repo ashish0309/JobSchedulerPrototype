@@ -14,7 +14,8 @@ public sealed class EnqueueJobActionTests
             store,
             definitions,
             new TestJobActorProvider(),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var result = await action.ExecuteAsync(
             "send-welcome-email",
@@ -39,7 +40,8 @@ public sealed class EnqueueJobActionTests
                 TestJobActorProvider.ActorId,
                 TestJobActorProvider.TenantId,
                 [JobPermissions.EmailRead])),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var result = await action.ExecuteAsync(
             "send-welcome-email",
@@ -60,7 +62,8 @@ public sealed class EnqueueJobActionTests
             store,
             definitions,
             new TestJobActorProvider(),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var result = await action.ExecuteAsync(
             "not-a-real-job",
@@ -76,7 +79,8 @@ public sealed class EnqueueJobActionTests
     {
         var action = new EmptyRuleAction(
             new TestJobActorProvider(),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
             () => action.ExecuteAsync(new EmptyRequest("request")));
@@ -90,14 +94,20 @@ public sealed class EnqueueJobActionTests
         return document.RootElement.Clone();
     }
 
+    private static IDataAccessScopeProvider ScopeProvider()
+    {
+        return new FixedDataAccessScopeProvider(DataAccessScope.Tenant(TestJobActorProvider.TenantId));
+    }
+
     private sealed record EmptyRequest(string Value) : IJobActionRequest<string>;
 
     private sealed class EmptyRuleAction : JobAuthorizedAction<EmptyRequest, string>
     {
         public EmptyRuleAction(
             IJobActorProvider actorProvider,
-            IJobAuthorizationRuleEvaluator ruleEvaluator)
-            : base(actorProvider, ruleEvaluator)
+            IJobAuthorizationRuleEvaluator ruleEvaluator,
+            IDataAccessScopeProvider dataAccessScopeProvider)
+            : base(actorProvider, ruleEvaluator, dataAccessScopeProvider)
         {
         }
 

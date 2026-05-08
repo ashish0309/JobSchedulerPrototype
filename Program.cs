@@ -16,9 +16,7 @@ builder.Services.AddDbContextFactory<JobSchedulerDbContext>(options =>
 builder.Services.Configure<JobWorkerOptions>(
     builder.Configuration.GetSection(JobWorkerOptions.SectionName));
 builder.Services.AddSingleton<SqliteJobStore>();
-builder.Services.AddSingleton<IJobStore>(services => new DataAccessScopedJobStore(
-    services.GetRequiredService<SqliteJobStore>(),
-    services.GetRequiredService<IDataAccessScopeProvider>()));
+builder.Services.AddSingleton<IJobStore>(services => services.GetRequiredService<SqliteJobStore>());
 builder.Services.AddSingleton<IJobDefinition, SendWelcomeEmailJobDefinition>();
 builder.Services.AddSingleton<IJobDefinitionRegistry, JobDefinitionRegistry>();
 builder.Services.AddSingleton<IJobActorProvider, DevelopmentHeaderJobActorProvider>();

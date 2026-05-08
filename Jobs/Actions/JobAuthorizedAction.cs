@@ -5,13 +5,16 @@ public abstract class JobAuthorizedAction<TRequest, TResponse> : IJobActionHandl
 {
     private readonly IJobActorProvider _actorProvider;
     private readonly IJobAuthorizationRuleEvaluator _ruleEvaluator;
+    private readonly IDataAccessScopeProvider _dataAccessScopeProvider;
 
     protected JobAuthorizedAction(
         IJobActorProvider actorProvider,
-        IJobAuthorizationRuleEvaluator ruleEvaluator)
+        IJobAuthorizationRuleEvaluator ruleEvaluator,
+        IDataAccessScopeProvider dataAccessScopeProvider)
     {
         _actorProvider = actorProvider;
         _ruleEvaluator = ruleEvaluator;
+        _dataAccessScopeProvider = dataAccessScopeProvider;
     }
 
     public async Task<TResponse> ExecuteAsync(
@@ -35,7 +38,21 @@ public abstract class JobAuthorizedAction<TRequest, TResponse> : IJobActionHandl
             return OnAuthorizationDenied(authorization);
         }
 
+        using var scope = _dataAccessScopeProvider.BeginScope(
+            BuildDataAccessScope(request, actor),
+            DataAccessOperation);
+
         return await ExecuteAuthorizedAsync(request, actor, cancellationToken);
+    }
+
+    protected virtual DataAccessOperation DataAccessOperation =>
+        global::JobSchedulerPrototype.Jobs.DataAccessOperation.Read;
+
+    protected virtual DataAccessScope BuildDataAccessScope(
+        TRequest request,
+        JobActor actor)
+    {
+        return DataAccessScope.Tenant(actor.TenantId);
     }
 
     protected abstract IReadOnlyList<IJobAuthorizationRule> BuildAuthorizationRules(TRequest request);

@@ -13,12 +13,16 @@ public sealed class EnqueueJobAction : JobAuthorizedAction<EnqueueJobActionReque
         IJobStore jobs,
         IJobDefinitionRegistry definitions,
         IJobActorProvider actorProvider,
-        IJobAuthorizationRuleEvaluator ruleEvaluator)
-        : base(actorProvider, ruleEvaluator)
+        IJobAuthorizationRuleEvaluator ruleEvaluator,
+        IDataAccessScopeProvider dataAccessScopeProvider)
+        : base(actorProvider, ruleEvaluator, dataAccessScopeProvider)
     {
         _jobs = jobs;
         _definitions = definitions;
     }
+
+    protected override DataAccessOperation DataAccessOperation =>
+        global::JobSchedulerPrototype.Jobs.DataAccessOperation.Mutate;
 
     public Task<JobEnqueueResult> ExecuteAsync(
         string type,

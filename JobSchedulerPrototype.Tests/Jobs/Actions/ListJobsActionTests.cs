@@ -23,7 +23,8 @@ public sealed class ListJobsActionTests
         var action = new ListJobsAction(
             store,
             new TestJobActorProvider(),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var result = await action.ExecuteAsync(new ListJobsActionRequest());
 
@@ -43,7 +44,8 @@ public sealed class ListJobsActionTests
         var action = new ListJobsAction(
             store,
             actorProvider,
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var result = await action.ExecuteAsync(new ListJobsActionRequest());
 
@@ -56,5 +58,10 @@ public sealed class ListJobsActionTests
     {
         using var document = JsonDocument.Parse("""{"userId":"user_123","email":"person@example.com"}""");
         return document.RootElement.Clone();
+    }
+
+    private static IDataAccessScopeProvider ScopeProvider()
+    {
+        return new FixedDataAccessScopeProvider(DataAccessScope.Tenant(TestJobActorProvider.TenantId));
     }
 }

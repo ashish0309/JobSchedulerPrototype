@@ -15,7 +15,8 @@ public sealed class WorkerLifecycleActionsTests
         var action = new ClaimNextDueJobAction(
             LifecycleService(store),
             new TestJobActorProvider(),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var now = new DateTimeOffset(2026, 5, 7, 20, 0, 0, TimeSpan.Zero);
         var result = await action.ExecuteAsync(new ClaimNextDueJobActionRequest(
@@ -40,7 +41,8 @@ public sealed class WorkerLifecycleActionsTests
                 TestJobActorProvider.ActorId,
                 TestJobActorProvider.TenantId,
                 [JobPermissions.EmailRead])),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var now = new DateTimeOffset(2026, 5, 7, 20, 0, 0, TimeSpan.Zero);
         var result = await action.ExecuteAsync(new ClaimNextDueJobActionRequest(
@@ -62,7 +64,8 @@ public sealed class WorkerLifecycleActionsTests
         var action = new RenewJobLeaseAction(
             LifecycleService(store),
             new TestJobActorProvider(),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var renewedAt = new DateTimeOffset(2026, 5, 7, 20, 2, 0, TimeSpan.Zero);
         var result = await action.ExecuteAsync(new RenewJobLeaseActionRequest(
@@ -83,7 +86,8 @@ public sealed class WorkerLifecycleActionsTests
         var action = new CompleteJobExecutionAction(
             LifecycleService(store),
             new TestJobActorProvider(),
-            new JobAuthorizationRuleEvaluator());
+            new JobAuthorizationRuleEvaluator(),
+            ScopeProvider());
 
         var result = await action.ExecuteAsync(new CompleteJobExecutionActionRequest(
             job,
@@ -132,5 +136,10 @@ public sealed class WorkerLifecycleActionsTests
     {
         using var document = JsonDocument.Parse("""{"userId":"user_123","email":"person@example.com"}""");
         return document.RootElement.Clone();
+    }
+
+    private static IDataAccessScopeProvider ScopeProvider()
+    {
+        return new FixedDataAccessScopeProvider(DataAccessScope.AllTenants());
     }
 }

@@ -69,7 +69,7 @@ public sealed class AppStartupTests
             using var scope = factory.Services.CreateScope();
             var services = scope.ServiceProvider;
 
-            Assert.IsType<DataAccessScopedJobStore>(services.GetRequiredService<IJobStore>());
+            Assert.IsType<SqliteJobStore>(services.GetRequiredService<IJobStore>());
             Assert.IsType<DevelopmentHeaderJobActorProvider>(services.GetRequiredService<IJobActorProvider>());
             Assert.IsType<JobAuthorizationRuleEvaluator>(services.GetRequiredService<IJobAuthorizationRuleEvaluator>());
             Assert.IsType<JobActionDispatcher>(services.GetRequiredService<IJobActionDispatcher>());

@@ -7,8 +7,9 @@ public sealed class ListJobsAction : JobAuthorizedAction<ListJobsActionRequest, 
     public ListJobsAction(
         IJobStore jobs,
         IJobActorProvider actorProvider,
-        IJobAuthorizationRuleEvaluator ruleEvaluator)
-        : base(actorProvider, ruleEvaluator)
+        IJobAuthorizationRuleEvaluator ruleEvaluator,
+        IDataAccessScopeProvider dataAccessScopeProvider)
+        : base(actorProvider, ruleEvaluator, dataAccessScopeProvider)
     {
         _jobs = jobs;
     }

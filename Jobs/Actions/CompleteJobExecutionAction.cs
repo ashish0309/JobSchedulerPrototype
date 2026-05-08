@@ -7,10 +7,21 @@ public sealed class CompleteJobExecutionAction : JobAuthorizedAction<CompleteJob
     public CompleteJobExecutionAction(
         IJobLifecycleService lifecycle,
         IJobActorProvider actorProvider,
-        IJobAuthorizationRuleEvaluator ruleEvaluator)
-        : base(actorProvider, ruleEvaluator)
+        IJobAuthorizationRuleEvaluator ruleEvaluator,
+        IDataAccessScopeProvider dataAccessScopeProvider)
+        : base(actorProvider, ruleEvaluator, dataAccessScopeProvider)
     {
         _lifecycle = lifecycle;
+    }
+
+    protected override DataAccessOperation DataAccessOperation =>
+        global::JobSchedulerPrototype.Jobs.DataAccessOperation.Mutate;
+
+    protected override DataAccessScope BuildDataAccessScope(
+        CompleteJobExecutionActionRequest request,
+        JobActor actor)
+    {
+        return DataAccessScope.AllTenants();
     }
 
     protected override IReadOnlyList<IJobAuthorizationRule> BuildAuthorizationRules(CompleteJobExecutionActionRequest request)
