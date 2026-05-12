@@ -41,7 +41,7 @@ public sealed class QueuedJobWorkerTests
     {
         var store = new InMemoryJobStore();
         var job = CreateJob();
-        var dataAccessScopeProvider = new FixedDataAccessScopeProvider(DataAccessScope.AllTenants());
+        var dataAccessScopeProvider = new MockDataAccessScopeProvider(DataAccessScope.AllTenants());
         var dispatcher = new CapturingDataAccessScopeJobDispatcher(dataAccessScopeProvider);
         var actions = ActionDispatcher(store);
         store.Add(job);

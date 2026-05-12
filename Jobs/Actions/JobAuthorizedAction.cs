@@ -39,9 +39,12 @@ public abstract class JobAuthorizedAction<TRequest, TResponse> : IJobActionHandl
             return OnAuthorizationDenied(authorization);
         }
 
-        using var scope = _dataAccessScopeProvider.BeginScope(
-            BuildDataAccessScope(request, actor),
-            DataAccessOperation);
+        var dataAccessScope = BuildDataAccessScope(request, actor);
+        using var scope = dataAccessScope.IncludesAllTenants
+            ? _dataAccessScopeProvider.BeginCrossTenantScope(
+                DataAccessOperation,
+                $"{GetType().Name} requested cross-tenant scope.")
+            : _dataAccessScopeProvider.BeginScope(dataAccessScope, DataAccessOperation);
 
         return await ExecuteAuthorizedAsync(request, actor, cancellationToken);
     }

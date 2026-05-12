@@ -17,11 +17,13 @@ public sealed class DataAccessScopeProviderTests
     }
 
     [Fact]
-    public void BeginScopeTemporarilyOverridesCurrentScope()
+    public void BeginCrossTenantScopeTemporarilyOverridesCurrentScope()
     {
         var provider = new DataAccessScopeProvider(new TestJobActorProvider());
 
-        using (provider.BeginScope(DataAccessScope.AllTenants()))
+        using (provider.BeginCrossTenantScope(
+            DataAccessOperation.Read,
+            "test"))
         {
             Assert.True(provider.Current.IncludesAllTenants);
             Assert.Null(provider.Current.TenantId);
@@ -29,6 +31,15 @@ public sealed class DataAccessScopeProviderTests
 
         Assert.False(provider.Current.IncludesAllTenants);
         Assert.Equal(TestJobActorProvider.TenantId, provider.Current.TenantId);
+    }
+
+    [Fact]
+    public void BeginScopeRejectsRawAllTenantsEscalation()
+    {
+        var provider = new DataAccessScopeProvider(new TestJobActorProvider());
+
+        Assert.Throws<InvalidOperationException>(
+            () => provider.BeginScope(DataAccessScope.AllTenants(), DataAccessOperation.Read));
     }
 
     [Fact]

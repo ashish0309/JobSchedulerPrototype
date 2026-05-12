@@ -42,7 +42,7 @@ public sealed class QueuedJobWorker : IJobWorker
             logger,
             options,
             Microsoft.Extensions.Options.Options.Create(new WorkerActorOptions()),
-            new FixedDataAccessScopeProvider(DataAccessScope.AllTenants()))
+            CreateDefaultScopeProvider())
     {
     }
 
@@ -67,7 +67,7 @@ public sealed class QueuedJobWorker : IJobWorker
             logger,
             simulatedWorkDuration,
             leaseDuration,
-            new FixedDataAccessScopeProvider(DataAccessScope.AllTenants()),
+            CreateDefaultScopeProvider(),
             new WorkerActorOptions().ToActor())
     {
     }
@@ -301,5 +301,26 @@ public sealed class QueuedJobWorker : IJobWorker
     private static TimeSpan LeaseRenewalIntervalFor(TimeSpan leaseDuration)
     {
         return TimeSpan.FromTicks(Math.Max(TimeSpan.FromMilliseconds(1).Ticks, leaseDuration.Ticks / 2));
+    }
+
+    private static IDataAccessScopeProvider CreateDefaultScopeProvider()
+    {
+        return new DataAccessScopeProvider(
+            new StaticJobActorProvider(new WorkerActorOptions().ToActor()));
+    }
+
+    private sealed class StaticJobActorProvider : IJobActorProvider
+    {
+        private readonly JobActor _actor;
+
+        public StaticJobActorProvider(JobActor actor)
+        {
+            _actor = actor;
+        }
+
+        public JobActor GetCurrentActor()
+        {
+            return _actor;
+        }
     }
 }

@@ -10,12 +10,13 @@ public sealed class JobSchedulerDbContext : DbContext, IDataAccessPolicyContext
 
     public JobSchedulerDbContext(
         DbContextOptions<JobSchedulerDbContext> options,
-        IDataAccessScopeProvider? dataAccessScopeProvider = null,
+        IDataAccessScopeProvider dataAccessScopeProvider,
         IDataAccessPolicyFilterBuilder? dataAccessPolicyFilterBuilder = null)
         : base(options)
     {
-        _dataAccessScopeProvider = dataAccessScopeProvider
-            ?? new FixedDataAccessScopeProvider(DataAccessScope.AllTenants());
+        ArgumentNullException.ThrowIfNull(dataAccessScopeProvider);
+
+        _dataAccessScopeProvider = dataAccessScopeProvider;
         _dataAccessPolicyFilterBuilder = dataAccessPolicyFilterBuilder
             ?? DefaultDataAccessPolicyFilterBuilder;
     }

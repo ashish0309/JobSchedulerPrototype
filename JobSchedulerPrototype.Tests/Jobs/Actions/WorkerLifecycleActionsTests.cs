@@ -140,6 +140,6 @@ public sealed class WorkerLifecycleActionsTests
 
     private static IDataAccessScopeProvider ScopeProvider()
     {
-        return new FixedDataAccessScopeProvider(DataAccessScope.AllTenants());
+        return new MockDataAccessScopeProvider(DataAccessScope.AllTenants());
     }
 }

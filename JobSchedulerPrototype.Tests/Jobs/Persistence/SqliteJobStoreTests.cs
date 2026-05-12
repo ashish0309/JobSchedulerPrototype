@@ -672,7 +672,9 @@ public sealed class SqliteJobStoreTests
                 .UseSqlite(connection)
                 .Options;
 
-            await using (var db = new JobSchedulerDbContext(options))
+            await using (var db = new JobSchedulerDbContext(
+                options,
+                new MockDataAccessScopeProvider(DataAccessScope.AllTenants())))
             {
                 await db.Database.EnsureCreatedAsync();
             }
@@ -693,7 +695,9 @@ public sealed class SqliteJobStoreTests
                 .UseSqlite(connectionString)
                 .Options;
 
-            await using (var db = new JobSchedulerDbContext(options))
+            await using (var db = new JobSchedulerDbContext(
+                options,
+                new MockDataAccessScopeProvider(DataAccessScope.AllTenants())))
             {
                 await db.Database.EnsureCreatedAsync();
             }
@@ -708,7 +712,7 @@ public sealed class SqliteJobStoreTests
 
         public SqliteJobStore CreateStore(DataAccessScope dataAccessScope)
         {
-            var dataAccessScopeProvider = new FixedDataAccessScopeProvider(dataAccessScope);
+            var dataAccessScopeProvider = new MockDataAccessScopeProvider(dataAccessScope);
 
             return new SqliteJobStore(
                 new TestDbContextFactory(_options, dataAccessScopeProvider));
@@ -716,7 +720,9 @@ public sealed class SqliteJobStoreTests
 
         public async Task ExecuteAsync(Func<JobSchedulerDbContext, Task> action)
         {
-            await using var db = new JobSchedulerDbContext(_options);
+            await using var db = new JobSchedulerDbContext(
+                _options,
+                new MockDataAccessScopeProvider(DataAccessScope.AllTenants()));
             await action(db);
         }
 

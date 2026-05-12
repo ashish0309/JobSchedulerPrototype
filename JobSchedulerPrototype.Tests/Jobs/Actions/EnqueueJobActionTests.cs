@@ -96,7 +96,7 @@ public sealed class EnqueueJobActionTests
 
     private static IDataAccessScopeProvider ScopeProvider()
     {
-        return new FixedDataAccessScopeProvider(DataAccessScope.Tenant(TestJobActorProvider.TenantId));
+        return new MockDataAccessScopeProvider(DataAccessScope.Tenant(TestJobActorProvider.TenantId));
     }
 
     private sealed record EmptyRequest(string Value) : IJobActionRequest<string>;

@@ -13,7 +13,9 @@ public sealed class DataAccessScopedJobStoreTests
         var innerStore = new TrackingJobStore(scopeProvider);
         var scopedStore = new DataAccessScopedJobStore(innerStore, scopeProvider);
 
-        using (scopeProvider.BeginScope(DataAccessScope.AllTenants()))
+        using (scopeProvider.BeginCrossTenantScope(
+            DataAccessOperation.Read,
+            "test"))
         {
             scopedStore.Add(CreateQueuedJob());
             _ = scopedStore.Get(Guid.NewGuid());

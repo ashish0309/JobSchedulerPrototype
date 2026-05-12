@@ -38,7 +38,7 @@ internal static class DataAccessTranslationAssert
 
         await using var db = new JobSchedulerDbContext(
             options,
-            new FixedDataAccessScopeProvider(DataAccessScope.AllTenants()));
+            new MockDataAccessScopeProvider(DataAccessScope.AllTenants()));
         await db.Database.EnsureCreatedAsync();
 
         await db.Set<TEntity>().Where(filter).Take(0).ToArrayAsync();

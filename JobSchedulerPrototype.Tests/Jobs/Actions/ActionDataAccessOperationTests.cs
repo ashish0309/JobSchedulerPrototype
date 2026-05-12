@@ -189,7 +189,7 @@ public sealed class ActionDataAccessOperationTests
 
     private static IDataAccessScopeProvider ScopeProvider(params string[] permissions)
     {
-        return new FixedDataAccessScopeProvider(
+        return new MockDataAccessScopeProvider(
             DataAccessScope.Tenant(TestJobActorProvider.TenantId),
             new JobActor(
                 TestJobActorProvider.ActorId,

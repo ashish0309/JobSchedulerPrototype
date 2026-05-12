@@ -14,7 +14,7 @@ public sealed class JobSchedulerDbContextTests
             .UseSqlite("Data Source=:memory:")
             .Options;
 
-        using var db = new JobSchedulerDbContext(options);
+        using var db = CreateDbContext(options, DataAccessScope.AllTenants());
 
         var jobEntity = db.Model.FindEntityType(typeof(JobRecord));
         Assert.NotNull(jobEntity);
@@ -127,14 +127,14 @@ public sealed class JobSchedulerDbContextTests
             scheduledAt,
             changedAt);
 
-        await using (var db = new JobSchedulerDbContext(options))
+        await using (var db = CreateDbContext(options, DataAccessScope.AllTenants()))
         {
             await db.Database.EnsureCreatedAsync();
             db.Jobs.Add(job);
             await db.SaveChangesAsync();
         }
 
-        await using (var db = new JobSchedulerDbContext(options))
+        await using (var db = CreateDbContext(options, DataAccessScope.AllTenants()))
         {
             var persistedJob = await db.Jobs
                 .Include(entity => entity.History)
@@ -176,12 +176,12 @@ public sealed class JobSchedulerDbContextTests
             .UseSqlite(connection)
             .Options;
 
-        await using (var db = new JobSchedulerDbContext(options))
+        await using (var db = CreateDbContext(options, DataAccessScope.AllTenants()))
         {
             await db.Database.MigrateAsync();
         }
 
-        await using (var db = new JobSchedulerDbContext(options))
+        await using (var db = CreateDbContext(options, DataAccessScope.AllTenants()))
         {
             Assert.True(await db.Database.CanConnectAsync());
             Assert.Contains(
@@ -217,7 +217,7 @@ public sealed class JobSchedulerDbContextTests
     {
         return new JobSchedulerDbContext(
             options,
-            new FixedDataAccessScopeProvider(dataAccessScope));
+            new MockDataAccessScopeProvider(dataAccessScope));
     }
 
     private static JobRecord CreateQueuedJob(string tenantId)

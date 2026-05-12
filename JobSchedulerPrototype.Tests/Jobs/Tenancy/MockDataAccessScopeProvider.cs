@@ -1,9 +1,11 @@
-namespace JobSchedulerPrototype.Jobs;
+using JobSchedulerPrototype.Jobs;
 
-public sealed class FixedDataAccessScopeProvider : IDataAccessScopeProvider
+namespace JobSchedulerPrototype.Tests.Jobs;
+
+internal sealed class MockDataAccessScopeProvider : IDataAccessScopeProvider
 {
     private static readonly JobActor DefaultActor =
-        new("system", "system", [JobPermissions.All]);
+        new("test-system", "system", [JobPermissions.All]);
 
     private readonly DataAccessScope _defaultScope;
     private readonly JobActor _actor;
@@ -12,7 +14,7 @@ public sealed class FixedDataAccessScopeProvider : IDataAccessScopeProvider
     private readonly AsyncLocal<DataAccessScope?> _currentScope = new();
     private readonly AsyncLocal<DataAccessOperation?> _currentOperation = new();
 
-    public FixedDataAccessScopeProvider(
+    public MockDataAccessScopeProvider(
         DataAccessScope defaultScope,
         JobActor? actor = null,
         DataAccessOperation defaultOperation = DataAccessOperation.Read)
@@ -49,13 +51,18 @@ public sealed class FixedDataAccessScopeProvider : IDataAccessScopeProvider
         return BeginScope(scope, DataAccessOperation.Read);
     }
 
+    public IDisposable BeginCrossTenantScope(DataAccessOperation operation, string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        return BeginScope(DataAccessScope.AllTenants(), operation);
+    }
+
     public IDisposable BeginActorScope(JobActor actor)
     {
         ArgumentNullException.ThrowIfNull(actor);
 
         var previousActor = _currentActor.Value;
         _currentActor.Value = actor;
-
         return new ScopeHandle(() => _currentActor.Value = previousActor);
     }
 

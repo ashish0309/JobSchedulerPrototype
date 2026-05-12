@@ -196,7 +196,7 @@ public sealed class DataAccessPolicyFilterBuilderTests
 
         await using var db = new JobSchedulerDbContext(
             options,
-            new FixedDataAccessScopeProvider(DataAccessScope.AllTenants()));
+            new MockDataAccessScopeProvider(DataAccessScope.AllTenants()));
         await db.Database.EnsureCreatedAsync();
         db.Jobs.Add(CreateQueuedJob(TestJobActorProvider.TenantId));
         await db.SaveChangesAsync();

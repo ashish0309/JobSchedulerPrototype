@@ -14,5 +14,7 @@ public interface IDataAccessScopeProvider
 
     IDisposable BeginScope(DataAccessScope scope);
 
+    IDisposable BeginCrossTenantScope(DataAccessOperation operation, string reason);
+
     IDisposable BeginActorScope(JobActor actor);
 }

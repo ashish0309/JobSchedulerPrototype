@@ -6,6 +6,7 @@ public sealed class DataAccessScopeProvider : IDataAccessScopeProvider
     private readonly AsyncLocal<JobActor?> _currentActor = new();
     private readonly AsyncLocal<DataAccessScope?> _currentScope = new();
     private readonly AsyncLocal<DataAccessOperation?> _currentOperation = new();
+    private readonly AsyncLocal<int> _crossTenantScopeDepth = new();
 
     public DataAccessScopeProvider(IJobActorProvider actorProvider)
     {
@@ -24,6 +25,12 @@ public sealed class DataAccessScopeProvider : IDataAccessScopeProvider
 
     public IDisposable BeginScope(DataAccessScope scope, DataAccessOperation operation)
     {
+        if (scope.IncludesAllTenants && _crossTenantScopeDepth.Value == 0)
+        {
+            throw new InvalidOperationException(
+                "Cross-tenant scope requires BeginCrossTenantScope.");
+        }
+
         var previousScope = _currentScope.Value;
         var previousOperation = _currentOperation.Value;
         _currentScope.Value = scope;
@@ -41,6 +48,28 @@ public sealed class DataAccessScopeProvider : IDataAccessScopeProvider
         return BeginScope(scope, DataAccessOperation.Read);
     }
 
+    public IDisposable BeginCrossTenantScope(DataAccessOperation operation, string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
+        var actor = CurrentActor;
+        if (!CanUseCrossTenantScope(actor, operation))
+        {
+            throw new InvalidOperationException(
+                $"Actor '{actor.Id}' is not authorized for cross-tenant '{operation}' scope.");
+        }
+
+        var previousDepth = _crossTenantScopeDepth.Value;
+        _crossTenantScopeDepth.Value = previousDepth + 1;
+        var scopeHandle = BeginScope(DataAccessScope.AllTenants(), operation);
+
+        return new ScopeHandle(() =>
+        {
+            scopeHandle.Dispose();
+            _crossTenantScopeDepth.Value = previousDepth;
+        });
+    }
+
     public IDisposable BeginActorScope(JobActor actor)
     {
         ArgumentNullException.ThrowIfNull(actor);
@@ -49,6 +78,25 @@ public sealed class DataAccessScopeProvider : IDataAccessScopeProvider
         _currentActor.Value = actor;
 
         return new ScopeHandle(() => _currentActor.Value = previousActor);
+    }
+
+    private static bool CanUseCrossTenantScope(
+        JobActor actor,
+        DataAccessOperation operation)
+    {
+        if (actor.HasPermission(JobPermissions.All))
+        {
+            return true;
+        }
+
+        return operation switch
+        {
+            DataAccessOperation.Read => actor.HasPermission(JobPermissions.GlobalRead)
+                                        || actor.HasPermission(JobPermissions.Execute),
+            DataAccessOperation.Mutate => actor.HasPermission(JobPermissions.GlobalRead)
+                                          || actor.HasPermission(JobPermissions.Execute),
+            _ => false
+        };
     }
 
     private sealed class ScopeHandle : IDisposable

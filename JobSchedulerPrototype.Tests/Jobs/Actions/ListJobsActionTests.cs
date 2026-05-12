@@ -62,6 +62,6 @@ public sealed class ListJobsActionTests
 
     private static IDataAccessScopeProvider ScopeProvider()
     {
-        return new FixedDataAccessScopeProvider(DataAccessScope.Tenant(TestJobActorProvider.TenantId));
+        return new MockDataAccessScopeProvider(DataAccessScope.Tenant(TestJobActorProvider.TenantId));
     }
 }
